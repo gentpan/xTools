@@ -1,4 +1,8 @@
 # 🚀 WP Starter Kit
+[![GitHub Stars](https://img.shields.io/github/stars/gentpan/wp-starter-kit?style=social)](https://github.com/gentpan/wp-starter-kit/stargazers)
+[![License](https://img.shields.io/github/license/gentpan/wp-starter-kit?color=brightgreen)](https://github.com/gentpan/wp-starter-kit/blob/main/LICENSE)
+[![Issues](https://img.shields.io/github/issues/gentpan/wp-starter-kit)](https://github.com/gentpan/wp-starter-kit/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/gentpan/wp-starter-kit)](https://github.com/gentpan/wp-starter-kit/commits/main)
 
 一个专为 WordPress 新手用户设计的多功能优化插件，涵盖邮件发送、Gutenberg 禁用、头像 CDN 替换和分类链接优化等功能，帮助你更轻松地启动 WordPress 项目。
 
@@ -56,7 +60,7 @@
 - 切换经典编辑器与小工具 UI
 
 ### 3. 🚀 头像加速
-- 选择内置 CDN 节点（如 V2EX / cn.gravatar.com）
+- 选择内置 CDN 节点（如 BlueCDN / gravatar.bluecdn.com）
 - 或填写自定义头像地址模板
 
 ### 4. 🔨 其他优化
