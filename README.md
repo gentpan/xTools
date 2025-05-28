@@ -6,7 +6,7 @@
 
 一个专为 WordPress 新手用户设计的多功能优化插件，涵盖邮件发送、Gutenberg 禁用、头像 CDN 替换和分类链接优化等功能，帮助你更轻松地启动 WordPress 项目。
 
-[👉 插件主页](https://westlife.net/wp-starter-kit.html) | [📖 作者博客](https://westlife.net) | [🐞 问题反馈](https://github.com/gentpan/wp-starter-kit/issues)
+[👉 插件主页](https://xifeng.net/wp-starter-kit.html) | [📖 作者博客](https://xifeng.net) | [🐞 问题反馈](https://github.com/gentpan/wp-starter-kit/issues)
 
 ---
 
