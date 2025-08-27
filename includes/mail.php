@@ -8,17 +8,15 @@
  *
  * @package WP Starter Kit
  * @subpackage Mail
- * @version 1.0.0
- * @author 西风 <hi@xifeng.net>
- * @link https://westlife.net/wp-starter-kit.html
- * @copyright Copyright (c) 2023-2025, 西风
  * @license GPL v2 or later
  */
 
 function wp_starter_kit_smtp_settings_tab() {
-    $options = get_option( 'wp_starter_kit_smtp_options' );
-    $port = isset( $options['port'] ) ? esc_attr( $options['port'] ) : '587';
-    $encryption = isset( $options['encryption'] ) ? esc_attr( $options['encryption'] ) : '';
+    $options = get_option('wp_starter_kit_smtp_options');
+    // 修改默认端口为465
+    $port = isset($options['port']) ? esc_attr($options['port']) : '465';
+    // 修改默认加密方式为SSL  
+    $encryption = isset($options['encryption']) ? esc_attr($options['encryption']) : 'ssl';
     ?>
         <?php settings_fields( 'wp_starter_kit_smtp_group' ); ?>
         <?php do_settings_sections( 'wp_starter_kit_smtp_group' ); ?>
@@ -28,15 +26,19 @@ function wp_starter_kit_smtp_settings_tab() {
         </tr>
         <tr valign="top">
             <th scope="row">端口</th>
-            <td><input type="number" name="wp_starter_kit_smtp_options[port]" class="small-text" value="<?php echo $port; ?>"></td>
+            <td>
+                <input type="number" name="wp_starter_kit_smtp_options[port]" id="smtp_port" 
+                    class="small-text" value="<?php echo $port; ?>">
+                <p class="description">常用端口: SSL-465, TLS-587, 无加密-25</p>
+            </td>
         </tr>
         <tr valign="top">
             <th scope="row">加密方式</th>
             <td>
                 <select name="wp_starter_kit_smtp_options[encryption]" id="smtp_encryption">
-                    <option value="" <?php selected( $encryption, '' ); ?>>无</option>
-                    <option value="ssl" <?php selected( $encryption, 'ssl' ); ?>>SSL</option>
-                    <option value="tls" <?php selected( $encryption, 'tls' ); ?>>TLS</option>
+                    <option value="" <?php selected($encryption, ''); ?>>无 (端口 25)</option>
+                    <option value="ssl" <?php selected($encryption, 'ssl'); ?>>SSL (端口 465)</option>
+                    <option value="tls" <?php selected($encryption, 'tls'); ?>>TLS (端口 587)</option>
                 </select>
             </td>
         </tr>
@@ -61,8 +63,8 @@ function wp_starter_kit_smtp_settings_tab() {
             <td>
                 <div id="test_email_form">
                     <?php wp_nonce_field('wp_starter_kit_test_email', 'wp_starter_kit_test_email_nonce'); ?>
-                    <input type="email" id="test_email" name="test_email" placeholder="收件人邮箱" required 
-                        class="regular-text" style="width: 220px; display:inline-block;" />
+                    <input type="email" id="test_email" name="test_email" placeholder="收件人邮箱"
+                    class="regular-text" style="width: 220px; display:inline-block;" />
                     <button type="button" id="send_test_email" class="button button-secondary" style="display:inline-block; margin-left: 10px;">
                         <span class="dashicons dashicons-email" style="vertical-align: middle;"></span>
                         发送测试邮件
@@ -158,7 +160,7 @@ function wp_starter_kit_smtp_test_email_field() {
         <td>
             <div id="test_email_form">
                 <?php wp_nonce_field('wp_starter_kit_test_email', 'wp_starter_kit_test_email_nonce'); ?>
-                <input type="email" id="test_email" name="test_email" placeholder="收件人邮箱" required 
+                <input type="email" id="test_email" name="test_email" placeholder="收件人邮箱"
                     class="regular-text" style="width: 220px; display:inline-block;" />
                 <button type="button" id="send_test_email" class="button button-secondary" style="display:inline-block; margin-left: 10px;">
                     <span class="dashicons dashicons-email" style="vertical-align: middle;"></span>
@@ -228,6 +230,34 @@ function wp_starter_kit_smtp_test_email_js() {
                     $spinner.css('visibility', 'hidden');
                 }
             });
+        });
+    });
+    </script>
+    <?php
+}
+
+// 添加端口和加密方式联动的 JavaScript
+add_action('admin_footer', 'wp_starter_kit_smtp_port_js');
+function wp_starter_kit_smtp_port_js() {
+    if (get_current_screen()->id !== 'tools_page_wp-starter-kit') {
+        return;
+    }
+    ?>
+    <script type="text/javascript">
+    jQuery(document).ready(function($) {
+        $('#smtp_encryption').on('change', function() {
+            var port = '25'; // 默认端口
+            
+            switch($(this).val()) {
+                case 'ssl':
+                    port = '465';
+                    break;
+                case 'tls':
+                    port = '587';
+                    break;
+            }
+            
+            $('#smtp_port').val(port);
         });
     });
     </script>
