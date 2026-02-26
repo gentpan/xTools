@@ -47,6 +47,8 @@ jQuery(document).ready(function($) {
         var subject = $('#test_email_subject').val();
         var message = $('#test_email_message').val();
         var contentType = $('#test_email_content_type').val();
+        var templateId = $('#test_email_template_id').val();
+        var templateVars = $('#test_email_template_vars').val();
         var nonce = wpStarterKit.testEmailNonce || $('#wp_starter_kit_test_email_nonce').val();
 
         if (!email) {
@@ -67,6 +69,8 @@ jQuery(document).ready(function($) {
                 test_subject: subject,
                 test_message: message,
                 test_content_type: contentType,
+                test_template_id: templateId,
+                test_template_vars: templateVars,
                 nonce: nonce
             },
             success: function(response) {
@@ -114,6 +118,542 @@ jQuery(document).ready(function($) {
     if ($('#mail_send_mode').length) {
         setMailModeUI($('#mail_send_mode').val());
     }
+
+    function setCustomCdnRowUI() {
+        var isCustom = $('#cdn_url_select').val() === 'custom';
+        $('#custom_cdn_url_row').toggleClass('hidden', !isCustom);
+    }
+
+    $('#cdn_url_select').on('change', setCustomCdnRowUI);
+    if ($('#cdn_url_select').length) {
+        setCustomCdnRowUI();
+    }
+
+    var templateState = {
+        templates: [],
+        currentId: ''
+    };
+
+    function readTemplateInitialData() {
+        var node = document.getElementById('mail-template-initial-data');
+        if (!node) {
+            return;
+        }
+        try {
+            var parsed = JSON.parse(node.textContent || '[]');
+            templateState.templates = Array.isArray(parsed) ? parsed : [];
+            if (templateState.templates.length) {
+                templateState.currentId = templateState.templates[0].id;
+            }
+        } catch (e) {
+            templateState.templates = [];
+        }
+    }
+
+    function renderTemplateSelect() {
+        var $select = $('#mail_template_select');
+        if (!$select.length) {
+            return;
+        }
+
+        var html = templateState.templates.map(function(tpl) {
+            var label = tpl.name + (tpl.is_default ? '（默认）' : '');
+            return '<option value="' + tpl.id + '">' + label + '</option>';
+        }).join('');
+        $select.html(html);
+        if (templateState.currentId) {
+            $select.val(templateState.currentId);
+        }
+    }
+
+    function getCurrentTemplate() {
+        var id = templateState.currentId || $('#mail_template_select').val();
+        var item = templateState.templates.find(function(tpl) { return tpl.id === id; });
+        return item || null;
+    }
+
+    function fillTemplateForm(template) {
+        if (!template) {
+            return;
+        }
+        $('#mail_template_name').val(template.name || '');
+        $('#mail_template_subject').val(template.subject || '');
+        $('#mail_template_content_type').val(template.content_type || 'html');
+        $('#mail_template_html_body').val(template.html_body || '');
+        $('#mail_template_plain_body').val(template.plain_body || '');
+        $('#mail_template_enabled').prop('checked', !!template.enabled);
+        $('#mail_template_default').prop('checked', !!template.is_default);
+    }
+
+    function collectTemplateForm() {
+        var id = templateState.currentId || ('tpl_' + Date.now());
+        return {
+            id: id,
+            name: $('#mail_template_name').val(),
+            subject: $('#mail_template_subject').val(),
+            content_type: $('#mail_template_content_type').val(),
+            html_body: $('#mail_template_html_body').val(),
+            plain_body: $('#mail_template_plain_body').val(),
+            enabled: $('#mail_template_enabled').is(':checked') ? 1 : 0,
+            is_default: $('#mail_template_default').is(':checked') ? 1 : 0
+        };
+    }
+
+    function setTemplateResult(message, success) {
+        var noticeClass = success ? 'notice notice-success inline' : 'notice notice-error inline';
+        $('#mail_template_result').html('<div class="' + noticeClass + '"><p>' + message + '</p></div>');
+    }
+
+    function syncTemplateState(templates, fallbackId) {
+        templateState.templates = Array.isArray(templates) ? templates : [];
+        if (!templateState.templates.length) {
+            templateState.currentId = '';
+            return;
+        }
+        if (fallbackId && templateState.templates.some(function(tpl) { return tpl.id === fallbackId; })) {
+            templateState.currentId = fallbackId;
+        } else {
+            templateState.currentId = templateState.templates[0].id;
+        }
+        renderTemplateSelect();
+        fillTemplateForm(getCurrentTemplate());
+    }
+
+    function templateAjax(op, extraData, done) {
+        var $spinner = $('#mail_template_spinner');
+        if ($spinner.length) {
+            $spinner.addClass('is-active');
+        }
+
+        var payload = $.extend({
+            action: 'wp_starter_kit_mail_template_manage',
+            nonce: wpStarterKit.mailTemplateNonce,
+            op: op
+        }, extraData || {});
+
+        $.ajax({
+            url: wpStarterKit.ajaxurl,
+            type: 'POST',
+            data: payload,
+            success: function(response) {
+                if (done) {
+                    done(response);
+                }
+            },
+            error: function() {
+                setTemplateResult('请求失败，请稍后重试。', false);
+            },
+            complete: function() {
+                if ($spinner.length) {
+                    $spinner.removeClass('is-active');
+                }
+            }
+        });
+    }
+
+    readTemplateInitialData();
+    if (templateState.templates.length && $('#mail_template_select').length) {
+        renderTemplateSelect();
+        fillTemplateForm(getCurrentTemplate());
+    }
+
+    $('#mail_template_select').on('change', function() {
+        templateState.currentId = $(this).val();
+        fillTemplateForm(getCurrentTemplate());
+    });
+
+    $('#mail_template_new').on('click', function() {
+        var id = 'tpl_' + Date.now();
+        var tpl = {
+            id: id,
+            name: '新模板',
+            subject: '【{{site_name}}】通知',
+            content_type: 'html',
+            html_body: '<p>Hello {{user_name}}</p>',
+            plain_body: 'Hello {{user_name}}',
+            enabled: 1,
+            is_default: 0
+        };
+        templateState.templates.unshift(tpl);
+        templateState.currentId = id;
+        renderTemplateSelect();
+        fillTemplateForm(tpl);
+        setTemplateResult('已创建草稿模板，点击“保存模板”生效。', true);
+    });
+
+    $('#mail_template_duplicate').on('click', function() {
+        var current = getCurrentTemplate();
+        if (!current) {
+            setTemplateResult('请先选择模板。', false);
+            return;
+        }
+        templateAjax('duplicate', { template_id: current.id }, function(response) {
+            if (!response.success) {
+                setTemplateResult((response.data && response.data.message) || '复制失败', false);
+                return;
+            }
+            syncTemplateState(response.data.templates);
+            setTemplateResult(response.data.message || '复制成功', true);
+        });
+    });
+
+    $('#mail_template_delete').on('click', function() {
+        var current = getCurrentTemplate();
+        if (!current) {
+            setTemplateResult('请先选择模板。', false);
+            return;
+        }
+        if (!window.confirm('确定删除该模板吗？')) {
+            return;
+        }
+        templateAjax('delete', { template_id: current.id }, function(response) {
+            if (!response.success) {
+                setTemplateResult((response.data && response.data.message) || '删除失败', false);
+                return;
+            }
+            syncTemplateState(response.data.templates);
+            setTemplateResult(response.data.message || '删除成功', true);
+        });
+    });
+
+    $('#mail_template_save').on('click', function() {
+        var template = collectTemplateForm();
+        templateState.currentId = template.id;
+        templateAjax('save', { template: template }, function(response) {
+            if (!response.success) {
+                setTemplateResult((response.data && response.data.message) || '保存失败', false);
+                return;
+            }
+            syncTemplateState(response.data.templates, template.id);
+            setTemplateResult(response.data.message || '保存成功', true);
+        });
+    });
+
+    $('#mail_template_preview').on('click', function() {
+        var current = getCurrentTemplate();
+        if (!current) {
+            setTemplateResult('请先选择模板。', false);
+            return;
+        }
+        templateAjax('preview', {
+            template_id: current.id,
+            vars_json: $('#mail_template_vars').val()
+        }, function(response) {
+            if (!response.success) {
+                setTemplateResult((response.data && response.data.message) || '预览失败', false);
+                return;
+            }
+            var rendered = response.data.rendered || {};
+            $('#mail_template_preview_box').text(
+                'Subject: ' + (rendered.subject || '') + '\n\n' +
+                'HTML:\n' + (rendered.html_body || '') + '\n\n' +
+                'Plain:\n' + (rendered.plain_body || '')
+            );
+            setTemplateResult('预览成功', true);
+        });
+    });
+
+    $('#mail_template_send_test').on('click', function() {
+        var current = getCurrentTemplate();
+        var to = $('#mail_template_test_to').val();
+        if (!current) {
+            setTemplateResult('请先选择模板。', false);
+            return;
+        }
+        if (!to) {
+            setTemplateResult('请填写测试收件人邮箱。', false);
+            return;
+        }
+        templateAjax('send_test', {
+            template_id: current.id,
+            to: to,
+            vars_json: $('#mail_template_vars').val()
+        }, function(response) {
+            if (!response.success) {
+                setTemplateResult((response.data && response.data.message) || '发送失败', false);
+                return;
+            }
+            setTemplateResult(response.data.message || '发送成功', true);
+        });
+    });
+
+    var dbmState = {
+        table: '',
+        page: 1,
+        perPage: 20,
+        primaryKey: '',
+        rows: [],
+        backups: []
+    };
+
+    function dbmEscape(text) {
+        return String(text === null || typeof text === 'undefined' ? '' : text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    function dbmNotice(message, success) {
+        var klass = success ? 'notice notice-success inline' : 'notice notice-error inline';
+        $('#dbm_result').html('<div class="' + klass + '"><p>' + dbmEscape(message) + '</p></div>');
+    }
+
+    function dbmBackupNotice(message, success) {
+        dbmNotice(message, success);
+    }
+
+    function dbmAjax(op, data, done) {
+        var $spinner = $('#dbm_spinner');
+        $spinner.addClass('is-active');
+        $.ajax({
+            url: wpStarterKit.ajaxurl,
+            type: 'POST',
+            data: $.extend({
+                action: 'wp_starter_kit_db_manager',
+                nonce: wpStarterKit.dbManagerNonce,
+                op: op
+            }, data || {}),
+            success: function(response) {
+                if (done) {
+                    done(response);
+                }
+            },
+            error: function() {
+                dbmNotice('数据库操作请求失败。', false);
+            },
+            complete: function() {
+                $spinner.removeClass('is-active');
+            }
+        });
+    }
+
+    function dbmRenderTables(tables) {
+        var $select = $('#dbm_table_select');
+        if (!$select.length) {
+            return;
+        }
+        var options = (tables || []).map(function(table) {
+            return '<option value="' + dbmEscape(table) + '">' + dbmEscape(table) + '</option>';
+        });
+        $select.html(options.join(''));
+        dbmState.table = $select.val() || '';
+    }
+
+    function dbmRenderRows(data) {
+        var columns = data.columns || [];
+        var rows = data.rows || [];
+        dbmState.primaryKey = data.primary_key || '';
+        dbmState.rows = rows;
+
+        var headHtml = columns.map(function(col) {
+            return '<th>' + dbmEscape(col) + '</th>';
+        }).join('') + '<th>操作</th>';
+        $('#dbm_rows_head').html(headHtml);
+
+        var bodyHtml = '';
+        if (!rows.length) {
+            bodyHtml = '<tr><td colspan="' + (columns.length + 1) + '">当前页没有数据。</td></tr>';
+        } else {
+            bodyHtml = rows.map(function(row, idx) {
+                var tds = columns.map(function(col) {
+                    return '<td>' + dbmEscape(row[col]) + '</td>';
+                }).join('');
+                return '<tr>' + tds + '<td><button type="button" class="button button-small dbm-edit-row" data-row-index="' + idx + '">编辑</button></td></tr>';
+            }).join('');
+        }
+        $('#dbm_rows_table tbody').html(bodyHtml);
+
+        var p = data.pagination || {};
+        $('#dbm_prev_page').prop('disabled', !p.has_prev);
+        $('#dbm_next_page').prop('disabled', !p.has_next);
+        $('#dbm_page_info').text('第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页，共 ' + (p.total || 0) + ' 条');
+    }
+
+    function dbmRenderBackups(backups) {
+        dbmState.backups = backups || [];
+        var $select = $('#dbm_backup_select');
+        if (!$select.length) {
+            return;
+        }
+        if (!dbmState.backups.length) {
+            $select.html('<option value="">暂无备份</option>');
+            return;
+        }
+        var options = dbmState.backups.map(function(item) {
+            var sizeKb = Math.round((item.size || 0) / 1024);
+            var label = item.name + ' (' + sizeKb + 'KB, ' + item.modified + ' UTC)';
+            return '<option value="' + dbmEscape(item.name) + '">' + dbmEscape(label) + '</option>';
+        });
+        $select.html(options.join(''));
+    }
+
+    function dbmLoadBackups() {
+        var $spinner = $('#dbm_backup_spinner');
+        $spinner.addClass('is-active');
+        dbmAjax('backup_list', {}, function(response) {
+            if (!response.success) {
+                dbmBackupNotice((response.data && response.data.message) || '读取备份列表失败', false);
+                $spinner.removeClass('is-active');
+                return;
+            }
+            dbmRenderBackups(response.data.backups || []);
+            dbmBackupNotice('备份列表已更新。', true);
+            $spinner.removeClass('is-active');
+        });
+    }
+
+    function dbmLoadTables() {
+        dbmAjax('tables', {}, function(response) {
+            if (!response.success) {
+                dbmNotice((response.data && response.data.message) || '读取表失败', false);
+                return;
+            }
+            dbmRenderTables(response.data.tables || []);
+            dbmNotice('数据表读取成功。', true);
+        });
+    }
+
+    function dbmLoadRows(page) {
+        var table = $('#dbm_table_select').val();
+        if (!table) {
+            dbmNotice('请先选择数据表。', false);
+            return;
+        }
+        dbmState.table = table;
+        dbmState.page = page || 1;
+        dbmState.perPage = parseInt($('#dbm_per_page').val(), 10) || 20;
+
+        dbmAjax('rows', {
+            table: dbmState.table,
+            page: dbmState.page,
+            per_page: dbmState.perPage
+        }, function(response) {
+            if (!response.success) {
+                dbmNotice((response.data && response.data.message) || '读取记录失败', false);
+                return;
+            }
+            dbmRenderRows(response.data);
+            dbmNotice('记录读取成功。', true);
+        });
+    }
+
+    if ($('#dbm_table_select').length) {
+        dbmLoadTables();
+        dbmLoadBackups();
+    }
+
+    $('#dbm_backup_refresh').on('click', function() {
+        dbmLoadBackups();
+    });
+
+    $('#dbm_backup_create').on('click', function() {
+        var $spinner = $('#dbm_backup_spinner');
+        $spinner.addClass('is-active');
+        dbmAjax('backup_create', {}, function(response) {
+            if (!response.success) {
+                dbmBackupNotice((response.data && response.data.message) || '备份失败', false);
+                $spinner.removeClass('is-active');
+                return;
+            }
+            dbmRenderBackups((response.data && response.data.backups) || []);
+            dbmBackupNotice((response.data && response.data.message) || '备份成功', true);
+            $spinner.removeClass('is-active');
+        });
+    });
+
+    $('#dbm_backup_restore').on('click', function() {
+        var fileName = $('#dbm_backup_select').val();
+        if (!fileName) {
+            dbmBackupNotice('请先选择备份文件。', false);
+            return;
+        }
+
+        if (!window.confirm('恢复会覆盖当前数据库数据，确定继续吗？')) {
+            return;
+        }
+
+        var $spinner = $('#dbm_backup_spinner');
+        $spinner.addClass('is-active');
+        dbmAjax('backup_restore', { file_name: fileName }, function(response) {
+            if (!response.success) {
+                dbmBackupNotice((response.data && response.data.message) || '恢复失败', false);
+                $spinner.removeClass('is-active');
+                return;
+            }
+            dbmRenderBackups((response.data && response.data.backups) || []);
+            dbmBackupNotice((response.data && response.data.message) || '恢复成功', true);
+            dbmLoadRows(1);
+            $spinner.removeClass('is-active');
+        });
+    });
+
+    $('#dbm_reload_tables').on('click', function() {
+        dbmLoadTables();
+    });
+
+    $('#dbm_load_rows').on('click', function() {
+        dbmLoadRows(1);
+    });
+
+    $('#dbm_prev_page').on('click', function() {
+        if (dbmState.page > 1) {
+            dbmLoadRows(dbmState.page - 1);
+        }
+    });
+
+    $('#dbm_next_page').on('click', function() {
+        dbmLoadRows(dbmState.page + 1);
+    });
+
+    $(document).on('click', '.dbm-edit-row', function() {
+        var idx = parseInt($(this).data('row-index'), 10);
+        var row = dbmState.rows[idx];
+        if (!row) {
+            return;
+        }
+        var pk = dbmState.primaryKey;
+        $('#dbm_edit_pk').val(row[pk] || '');
+        var editable = $.extend({}, row);
+        delete editable[pk];
+        $('#dbm_edit_json').val(JSON.stringify(editable, null, 2));
+    });
+
+    $('#dbm_save_row').on('click', function() {
+        var table = dbmState.table || $('#dbm_table_select').val();
+        var pk = dbmState.primaryKey;
+        var pkValue = $('#dbm_edit_pk').val();
+        var jsonText = $('#dbm_edit_json').val();
+        var $spinner = $('#dbm_save_spinner');
+
+        if (!table || !pk || !pkValue) {
+            dbmNotice('请先从列表选择一条记录再编辑。', false);
+            return;
+        }
+
+        try {
+            JSON.parse(jsonText);
+        } catch (e) {
+            dbmNotice('字段 JSON 格式错误。', false);
+            return;
+        }
+
+        $spinner.addClass('is-active');
+        dbmAjax('update', {
+            table: table,
+            primary_key: pk,
+            primary_value: pkValue,
+            update_json: jsonText
+        }, function(response) {
+            if (!response.success) {
+                dbmNotice((response.data && response.data.message) || '更新失败', false);
+                $spinner.removeClass('is-active');
+                return;
+            }
+            dbmNotice((response.data && response.data.message) || '更新成功', true);
+            dbmLoadRows(dbmState.page || 1);
+            $spinner.removeClass('is-active');
+        });
+    });
 
     function setReplaceLog(lines) {
         $('#replace_id_log').text((lines || []).join('\n'));

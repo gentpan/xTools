@@ -3,8 +3,8 @@
 /**
  * Plugin Name: WP Starter Kit
  * Plugin URI: https://xifeng.net/wp-starter-kit.html
- * Description: 新手必备工具集：邮件发送（SMTP/Resend）、ID 替换工具、系统状态诊断、编辑器与链接优化。
- * Version: 1.4.0
+ * Description: 新手必备工具集：邮件发送（SMTP/Resend+模板中心）、ID 替换工具、系统状态诊断、编辑器与链接优化。
+ * Version: 1.5.1
  * Author: 西风
  * Author URI: https://xifeng.net
  * License: GPL v2 or later
@@ -57,6 +57,10 @@ function wp_starter_kit_get_menu_title()
 }
 
 require_once plugin_dir_path(__FILE__) . 'includes/mail.php';
+$wp_starter_kit_mail_templates_file = plugin_dir_path(__FILE__) . 'includes/mail-templates.php';
+if (file_exists($wp_starter_kit_mail_templates_file)) {
+    require_once $wp_starter_kit_mail_templates_file;
+}
 $wp_starter_kit_id_replace_file = plugin_dir_path(__FILE__) . 'includes/id-replace.php';
 if (file_exists($wp_starter_kit_id_replace_file)) {
     require_once $wp_starter_kit_id_replace_file;
@@ -64,6 +68,10 @@ if (file_exists($wp_starter_kit_id_replace_file)) {
 $wp_starter_kit_system_status_file = plugin_dir_path(__FILE__) . 'includes/system-status.php';
 if (file_exists($wp_starter_kit_system_status_file)) {
     require_once $wp_starter_kit_system_status_file;
+}
+$wp_starter_kit_db_manager_file = plugin_dir_path(__FILE__) . 'includes/db-manager.php';
+if (file_exists($wp_starter_kit_db_manager_file)) {
+    require_once $wp_starter_kit_db_manager_file;
 }
 
 /**
@@ -79,15 +87,29 @@ function wp_starter_kit_options_page()
         <h2 class="nav-tab-wrapper">
             <a href="?page=wp-starter-kit&tab=general" class="nav-tab <?php echo $active_tab == 'general' ? 'nav-tab-active' : ''; ?>">常规设置</a>
             <a href="?page=wp-starter-kit&tab=smtp" class="nav-tab <?php echo $active_tab == 'smtp' ? 'nav-tab-active' : ''; ?>">SMTP 邮件设置</a>
+            <a href="?page=wp-starter-kit&tab=mail-templates" class="nav-tab <?php echo $active_tab == 'mail-templates' ? 'nav-tab-active' : ''; ?>">邮件模板</a>
             <a href="?page=wp-starter-kit&tab=id-replace" class="nav-tab <?php echo $active_tab == 'id-replace' ? 'nav-tab-active' : ''; ?>">ID 替换工具</a>
+            <a href="?page=wp-starter-kit&tab=db-manager" class="nav-tab <?php echo $active_tab == 'db-manager' ? 'nav-tab-active' : ''; ?>">数据库管理</a>
             <a href="?page=wp-starter-kit&tab=system-status" class="nav-tab <?php echo $active_tab == 'system-status' ? 'nav-tab-active' : ''; ?>">系统状态</a>
         </h2>
 
-        <?php if ($active_tab === 'id-replace') : ?>
+        <?php if ($active_tab === 'mail-templates') : ?>
+            <?php if (function_exists('wp_starter_kit_render_mail_templates_tab')) : ?>
+                <?php wp_starter_kit_render_mail_templates_tab(); ?>
+            <?php else : ?>
+                <div class="notice notice-error inline"><p>邮件模板模块未加载。</p></div>
+            <?php endif; ?>
+        <?php elseif ($active_tab === 'id-replace') : ?>
             <?php if (function_exists('wp_starter_kit_render_replace_post_id_tab')) : ?>
                 <?php wp_starter_kit_render_replace_post_id_tab(); ?>
             <?php else : ?>
                 <div class="notice notice-error inline"><p>ID 替换模块未加载。</p></div>
+            <?php endif; ?>
+        <?php elseif ($active_tab === 'db-manager') : ?>
+            <?php if (function_exists('wp_starter_kit_render_db_manager_tab')) : ?>
+                <?php wp_starter_kit_render_db_manager_tab(); ?>
+            <?php else : ?>
+                <div class="notice notice-error inline"><p>数据库管理模块未加载。</p></div>
             <?php endif; ?>
         <?php elseif ($active_tab === 'system-status') : ?>
             <?php if (function_exists('wp_starter_kit_render_system_status_tab')) : ?>
@@ -198,9 +220,6 @@ function wp_starter_kit_general_settings_tab()
             <select name="wp_starter_kit_options[cdn_url]" id="cdn_url_select">
                 <option value=""><?php esc_html_e('系统默认', 'wp-starter-kit'); ?></option>
                 <option value="gravatar.bluecdn.com" <?php selected($cdn_url, 'gravatar.bluecdn.com'); ?>>gravatar.bluecdn.com</option>
-                <option value="gravatar.cdn.ga" <?php selected($cdn_url, 'gravatar.cdn.ga'); ?>>gravatar.cdn.ga</option>
-                <option value="gravatar.ga" <?php selected($cdn_url, 'gravatar.ga'); ?>>gravatar.ga</option>
-                <option value="avatar.ga" <?php selected($cdn_url, 'avatar.ga'); ?>>avatar.ga</option>
                 <option value="gravatar.loli.net" <?php selected($cdn_url, 'gravatar.loli.net'); ?>>gravatar.loli.net</option>
                 <option value="cn.cravatar.com" <?php selected($cdn_url, 'cn.cravatar.com'); ?>>cn.cravatar.com</option>
                 <option value="weavatar.com" <?php selected($cdn_url, 'weavatar.com'); ?>>weavatar.com</option>
@@ -209,15 +228,13 @@ function wp_starter_kit_general_settings_tab()
             <p class="description">选择头像 CDN 加速地址，或自定义 CDN 地址。</p>
         </td>
     </tr>
-    <?php if ($cdn_url === 'custom') : ?>
-        <tr valign="top" id="custom_cdn_url_row">
-            <th scope="row">自定义 CDN 地址</th>
-            <td>
-                <input type="text" name="wp_starter_kit_options[custom_cdn_url]" class="regular-text" value="<?php echo esc_attr($custom_cdn_url); ?>">
-                <p class="description">请输入自定义 CDN 地址，例如：cdn.example.com</p>
-            </td>
-        </tr>
-    <?php endif; ?>
+    <tr valign="top" id="custom_cdn_url_row" class="<?php echo $cdn_url === 'custom' ? '' : 'hidden'; ?>">
+        <th scope="row">自定义 CDN 地址</th>
+        <td>
+            <input type="text" name="wp_starter_kit_options[custom_cdn_url]" class="regular-text" value="<?php echo esc_attr($custom_cdn_url); ?>">
+            <p class="description">请输入自定义 CDN 地址，例如：cdn.example.com</p>
+        </td>
+    </tr>
 <?php
 }
 
@@ -285,6 +302,9 @@ function wp_starter_kit_activate()
         'test_content_type' => 'html'
     );
     update_option('wp_starter_kit_smtp_options', $default_smtp_options);
+    if (function_exists('wp_starter_kit_get_default_mail_template')) {
+        update_option('wp_starter_kit_mail_templates', array(wp_starter_kit_get_default_mail_template()));
+    }
 
     // 激活时启用友情链接
     add_filter('pre_option_link_manager_enabled', '__return_true');
@@ -315,6 +335,7 @@ function wp_starter_kit_deactivate()
     // 停用时移除友情链接
     remove_filter('pre_option_link_manager_enabled', '__return_true');
     delete_option('link_manager_enabled');
+    wp_starter_kit_clear_cleanup_event();
 }
 
 /**
@@ -326,6 +347,7 @@ function wp_starter_kit_uninstall()
     // 插件卸载时，删除数据库中的所有插件数据
     delete_option('wp_starter_kit_options');
     delete_option('wp_starter_kit_smtp_options');
+    delete_option('wp_starter_kit_mail_templates');
     delete_option('wp_starter_kit_flush_rewrite_rules');
 }
 
@@ -386,6 +408,52 @@ function wp_starter_kit_apply_settings()
             }
             return array();
         });
+    }
+
+    // 增强：禁止修订并持续清理自动草稿/历史修订
+    if ($options['disable_revisions'] ?? false) {
+        add_filter('wp_revisions_to_keep', 'wp_starter_kit_disable_revisions_keep', 99, 2);
+        wp_starter_kit_maybe_schedule_cleanup_event();
+    } else {
+        wp_starter_kit_clear_cleanup_event();
+    }
+}
+
+function wp_starter_kit_disable_revisions_keep($num, $post)
+{
+    return 0;
+}
+
+add_action('wp_starter_kit_cleanup_drafts_revisions_event', 'wp_starter_kit_cleanup_drafts_revisions_job');
+function wp_starter_kit_cleanup_drafts_revisions_job()
+{
+    global $wpdb;
+
+    // 清理全部修订
+    $wpdb->query("DELETE FROM {$wpdb->posts} WHERE post_type = 'revision'");
+
+    // 清理 24 小时前的自动草稿，避免影响编辑中的草稿
+    $wpdb->query(
+        $wpdb->prepare(
+            "DELETE FROM {$wpdb->posts} WHERE post_status = %s AND post_date < %s",
+            'auto-draft',
+            gmdate('Y-m-d H:i:s', time() - DAY_IN_SECONDS)
+        )
+    );
+}
+
+function wp_starter_kit_maybe_schedule_cleanup_event()
+{
+    if (!wp_next_scheduled('wp_starter_kit_cleanup_drafts_revisions_event')) {
+        wp_schedule_event(time() + HOUR_IN_SECONDS, 'twicedaily', 'wp_starter_kit_cleanup_drafts_revisions_event');
+    }
+}
+
+function wp_starter_kit_clear_cleanup_event()
+{
+    $timestamp = wp_next_scheduled('wp_starter_kit_cleanup_drafts_revisions_event');
+    if ($timestamp) {
+        wp_unschedule_event($timestamp, 'wp_starter_kit_cleanup_drafts_revisions_event');
     }
 }
 
@@ -448,8 +516,10 @@ function wp_starter_kit_admin_scripts($hook)
         'ajaxurl' => admin_url('admin-ajax.php'),
         'cleanNonce' => wp_create_nonce('wp_starter_kit_clean_database'),
         'testEmailNonce' => wp_create_nonce('wp_starter_kit_test_email'),
+        'mailTemplateNonce' => wp_create_nonce('wp_starter_kit_mail_template_manage'),
         'replaceIdNonce' => wp_create_nonce('wp_starter_kit_replace_post_id'),
-        'replaceListNonce' => wp_create_nonce('wp_starter_kit_replace_id_list')
+        'replaceListNonce' => wp_create_nonce('wp_starter_kit_replace_id_list'),
+        'dbManagerNonce' => wp_create_nonce('wp_starter_kit_db_manager')
     ));
 }
 

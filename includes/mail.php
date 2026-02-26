@@ -23,6 +23,9 @@ function wp_starter_kit_smtp_settings_tab() {
     $test_subject = esc_attr($options['test_subject'] ?? '这是一封测试邮件');
     $test_message = (string)($options['test_message'] ?? '恭喜你，邮件发送配置成功！这是一封测试邮件。');
     $test_content_type = esc_attr($options['test_content_type'] ?? 'html');
+    $test_template_id = esc_attr($options['test_template_id'] ?? '');
+    $test_template_vars = (string)($options['test_template_vars'] ?? '');
+    $templates = function_exists('wp_starter_kit_get_mail_templates') ? wp_starter_kit_get_mail_templates() : array();
     ?>
         <?php settings_fields( 'wp_starter_kit_smtp_group' ); ?>
         <?php do_settings_sections( 'wp_starter_kit_smtp_group' ); ?>
@@ -94,6 +97,21 @@ function wp_starter_kit_smtp_settings_tab() {
                 <div id="test_email_form">
                     <?php wp_nonce_field('wp_starter_kit_test_email', 'wp_starter_kit_test_email_nonce'); ?>
                     <input type="email" id="test_email" name="test_email" placeholder="收件人邮箱" class="regular-text" />
+                    <?php if (!empty($templates)) : ?>
+                        <p>
+                            <select id="test_email_template_id" name="wp_starter_kit_smtp_options[test_template_id]">
+                                <option value="">不使用模板（使用下方主题/正文）</option>
+                                <?php foreach ($templates as $template) : ?>
+                                    <option value="<?php echo esc_attr($template['id']); ?>" <?php selected($test_template_id, $template['id']); ?>>
+                                        <?php echo esc_html($template['name']); ?><?php echo !empty($template['is_default']) ? '（默认）' : ''; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </p>
+                        <p>
+                            <textarea id="test_email_template_vars" name="wp_starter_kit_smtp_options[test_template_vars]" rows="4" class="large-text code" placeholder='模板变量 JSON，例如 {"user_name":"访客"}'><?php echo esc_textarea($test_template_vars); ?></textarea>
+                        </p>
+                    <?php endif; ?>
                     <p>
                         <input type="text" id="test_email_subject" name="wp_starter_kit_smtp_options[test_subject]" class="regular-text" placeholder="测试邮件主题" value="<?php echo $test_subject; ?>">
                     </p>
@@ -138,6 +156,8 @@ function wp_starter_kit_smtp_sanitize( $input ) {
     $sanitized['test_subject'] = sanitize_text_field($input['test_subject'] ?? '');
     $sanitized['test_content_type'] = ($input['test_content_type'] ?? '') === 'plain' ? 'plain' : 'html';
     $sanitized['test_message'] = wp_kses_post($input['test_message'] ?? '');
+    $sanitized['test_template_id'] = sanitize_key($input['test_template_id'] ?? '');
+    $sanitized['test_template_vars'] = sanitize_textarea_field($input['test_template_vars'] ?? '');
 
     return $sanitized;
 }
@@ -322,6 +342,37 @@ function wp_starter_kit_send_test_email_callback() {
     }
 
     $options = get_option('wp_starter_kit_smtp_options');
+    $template_id = sanitize_key($_POST['test_template_id'] ?? ($options['test_template_id'] ?? ''));
+    $template_vars_raw = sanitize_textarea_field($_POST['test_template_vars'] ?? ($options['test_template_vars'] ?? ''));
+    $template_vars = array();
+    if (!empty($template_vars_raw)) {
+        $decoded = json_decode(wp_unslash($template_vars_raw), true);
+        if (is_array($decoded)) {
+            $template_vars = $decoded;
+        }
+    }
+
+    if (!empty($template_id) && function_exists('wp_starter_kit_get_mail_template_by_id') && function_exists('wp_starter_kit_render_mail_template')) {
+        $template = wp_starter_kit_get_mail_template_by_id($template_id);
+        if ($template) {
+            $template_vars['user_email'] = $to;
+            $rendered = wp_starter_kit_render_mail_template($template, $template_vars);
+            $subject = $rendered['subject'];
+            $message = $rendered['content_type'] === 'plain' ? $rendered['plain_body'] : $rendered['html_body'];
+            $headers = array(
+                $rendered['content_type'] === 'plain'
+                    ? 'Content-Type: text/plain; charset=UTF-8'
+                    : 'Content-Type: text/html; charset=UTF-8'
+            );
+            $result = wp_mail($to, $subject, $message, $headers);
+
+            if ($result) {
+                wp_send_json_success('模板邮件发送成功！');
+            }
+            wp_send_json_error('模板邮件发送失败，请检查配置！');
+        }
+    }
+
     $subject = sanitize_text_field($_POST['test_subject'] ?? ($options['test_subject'] ?? '这是一封测试邮件'));
     $message = wp_kses_post((string)($_POST['test_message'] ?? ($options['test_message'] ?? '恭喜你，邮件发送配置成功！这是一封测试邮件。')));
     $content_type = sanitize_text_field($_POST['test_content_type'] ?? ($options['test_content_type'] ?? 'html'));
