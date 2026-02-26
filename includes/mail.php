@@ -13,18 +13,48 @@
 
 function wp_starter_kit_smtp_settings_tab() {
     $options = get_option('wp_starter_kit_smtp_options');
+    $mode = wp_starter_kit_get_mail_mode($options);
     // 修改默认端口为465
     $port = isset($options['port']) ? esc_attr($options['port']) : '465';
     // 修改默认加密方式为SSL  
     $encryption = isset($options['encryption']) ? esc_attr($options['encryption']) : 'ssl';
+    $resend_api_key = esc_attr($options['resend_api_key'] ?? '');
+    $resend_from = esc_attr($options['resend_from'] ?? '');
+    $test_subject = esc_attr($options['test_subject'] ?? '这是一封测试邮件');
+    $test_message = (string)($options['test_message'] ?? '恭喜你，邮件发送配置成功！这是一封测试邮件。');
+    $test_content_type = esc_attr($options['test_content_type'] ?? 'html');
     ?>
         <?php settings_fields( 'wp_starter_kit_smtp_group' ); ?>
         <?php do_settings_sections( 'wp_starter_kit_smtp_group' ); ?>
         <tr valign="top">
+            <th scope="row">邮件发送模式</th>
+            <td>
+                <select name="wp_starter_kit_smtp_options[mode]" id="mail_send_mode">
+                    <option value="smtp" <?php selected($mode, 'smtp'); ?>>SMTP</option>
+                    <option value="resend_api" <?php selected($mode, 'resend_api'); ?>>Resend API</option>
+                </select>
+                <p class="description">选择邮件发送方式：SMTP 或 Resend API。</p>
+            </td>
+        </tr>
+        <tr valign="top" class="wp-starter-kit-resend-row <?php echo $mode === 'resend_api' ? '' : 'hidden'; ?>">
+            <th scope="row">Resend API Key</th>
+            <td>
+                <input type="password" name="wp_starter_kit_smtp_options[resend_api_key]" class="regular-text" value="<?php echo $resend_api_key; ?>">
+                <p class="description">在 Resend 控制台创建 API Key，格式示例：re_xxx。</p>
+            </td>
+        </tr>
+        <tr valign="top" class="wp-starter-kit-resend-row <?php echo $mode === 'resend_api' ? '' : 'hidden'; ?>">
+            <th scope="row">Resend 发件人邮箱</th>
+            <td>
+                <input type="email" name="wp_starter_kit_smtp_options[resend_from]" class="regular-text" value="<?php echo $resend_from; ?>">
+                <p class="description">必须是 Resend 已验证域名下的发件人邮箱。</p>
+            </td>
+        </tr>
+        <tr valign="top" class="wp-starter-kit-smtp-row <?php echo $mode === 'smtp' ? '' : 'hidden'; ?>">
             <th scope="row">SMTP 主机</th>
             <td><input type="text" name="wp_starter_kit_smtp_options[host]" class="regular-text" value="<?php echo esc_attr( $options['host'] ?? '' ); ?>"></td>
         </tr>
-        <tr valign="top">
+        <tr valign="top" class="wp-starter-kit-smtp-row <?php echo $mode === 'smtp' ? '' : 'hidden'; ?>">
             <th scope="row">端口</th>
             <td>
                 <input type="number" name="wp_starter_kit_smtp_options[port]" id="smtp_port" 
@@ -32,7 +62,7 @@ function wp_starter_kit_smtp_settings_tab() {
                 <p class="description">常用端口: SSL-465, TLS-587, 无加密-25</p>
             </td>
         </tr>
-        <tr valign="top">
+        <tr valign="top" class="wp-starter-kit-smtp-row <?php echo $mode === 'smtp' ? '' : 'hidden'; ?>">
             <th scope="row">加密方式</th>
             <td>
                 <select name="wp_starter_kit_smtp_options[encryption]" id="smtp_encryption">
@@ -42,11 +72,11 @@ function wp_starter_kit_smtp_settings_tab() {
                 </select>
             </td>
         </tr>
-        <tr valign="top">
+        <tr valign="top" class="wp-starter-kit-smtp-row <?php echo $mode === 'smtp' ? '' : 'hidden'; ?>">
             <th scope="row">邮箱账号</th>
             <td><input type="text" name="wp_starter_kit_smtp_options[username]" class="regular-text" value="<?php echo esc_attr( $options['username'] ?? '' ); ?>"></td>
         </tr>
-        <tr valign="top">
+        <tr valign="top" class="wp-starter-kit-smtp-row <?php echo $mode === 'smtp' ? '' : 'hidden'; ?>">
             <th scope="row">邮箱密码</th>
             <td><input type="password" name="wp_starter_kit_smtp_options[password]" class="regular-text" value="<?php echo esc_attr( $options['password'] ?? '' ); ?>"></td>
         </tr>
@@ -63,14 +93,25 @@ function wp_starter_kit_smtp_settings_tab() {
             <td>
                 <div id="test_email_form">
                     <?php wp_nonce_field('wp_starter_kit_test_email', 'wp_starter_kit_test_email_nonce'); ?>
-                    <input type="email" id="test_email" name="test_email" placeholder="收件人邮箱"
-                    class="regular-text" style="width: 220px; display:inline-block;" />
-                    <button type="button" id="send_test_email" class="button button-secondary" style="display:inline-block; margin-left: 10px;">
-                        <span class="dashicons dashicons-email" style="vertical-align: middle;"></span>
+                    <input type="email" id="test_email" name="test_email" placeholder="收件人邮箱" class="regular-text" />
+                    <p>
+                        <input type="text" id="test_email_subject" name="wp_starter_kit_smtp_options[test_subject]" class="regular-text" placeholder="测试邮件主题" value="<?php echo $test_subject; ?>">
+                    </p>
+                    <p>
+                        <select id="test_email_content_type" name="wp_starter_kit_smtp_options[test_content_type]">
+                            <option value="html" <?php selected($test_content_type, 'html'); ?>>HTML</option>
+                            <option value="plain" <?php selected($test_content_type, 'plain'); ?>>纯文本</option>
+                        </select>
+                    </p>
+                    <p>
+                        <textarea id="test_email_message" name="wp_starter_kit_smtp_options[test_message]" rows="6" class="large-text" placeholder="测试邮件正文"><?php echo esc_textarea($test_message); ?></textarea>
+                    </p>
+                    <button type="button" id="send_test_email" class="button button-secondary">
+                        <span class="dashicons dashicons-email"></span>
                         发送测试邮件
                     </button>
-                    <span class="spinner" style="float: none; margin-top: 0;"></span>
-                    <div id="test_email_result" style="margin-top: 10px;"></div>
+                    <span class="spinner"></span>
+                    <div id="test_email_result"></div>
                 </div>
             </td>
         </tr>
@@ -82,14 +123,21 @@ function wp_starter_kit_smtp_settings_tab() {
  */
 function wp_starter_kit_smtp_sanitize( $input ) {
     $sanitized = array();
+    $mode = sanitize_text_field($input['mode'] ?? 'smtp');
+    $sanitized['mode'] = in_array($mode, array('smtp', 'resend_api'), true) ? $mode : 'smtp';
 
-    $sanitized['host']      = sanitize_text_field( $input['host'] );
-    $sanitized['port']      = absint( $input['port'] );
-    $sanitized['encryption']  = sanitize_text_field( $input['encryption'] );
-    $sanitized['username']  = sanitize_text_field( $input['username'] );
-    $sanitized['password']  = sanitize_text_field( $input['password'] );
-    $sanitized['from']      = sanitize_email( $input['from'] );
-    $sanitized['from_name'] = sanitize_text_field( $input['from_name'] );
+    $sanitized['host'] = sanitize_text_field($input['host'] ?? '');
+    $sanitized['port'] = absint($input['port'] ?? 0);
+    $sanitized['encryption'] = sanitize_text_field($input['encryption'] ?? '');
+    $sanitized['username'] = sanitize_text_field($input['username'] ?? '');
+    $sanitized['password'] = sanitize_text_field($input['password'] ?? '');
+    $sanitized['from'] = sanitize_email($input['from'] ?? '');
+    $sanitized['from_name'] = sanitize_text_field($input['from_name'] ?? '');
+    $sanitized['resend_api_key'] = sanitize_text_field($input['resend_api_key'] ?? '');
+    $sanitized['resend_from'] = sanitize_email($input['resend_from'] ?? '');
+    $sanitized['test_subject'] = sanitize_text_field($input['test_subject'] ?? '');
+    $sanitized['test_content_type'] = ($input['test_content_type'] ?? '') === 'plain' ? 'plain' : 'html';
+    $sanitized['test_message'] = wp_kses_post($input['test_message'] ?? '');
 
     return $sanitized;
 }
@@ -100,6 +148,11 @@ function wp_starter_kit_smtp_sanitize( $input ) {
 add_action('phpmailer_init', 'wp_starter_kit_smtp_configure_phpmailer');
 function wp_starter_kit_smtp_configure_phpmailer( $phpmailer ) {
     $options = get_option( 'wp_starter_kit_smtp_options' );
+    $mode = wp_starter_kit_get_mail_mode($options);
+
+    if ($mode !== 'smtp') {
+        return;
+    }
 
     if ( ! isset( $options['host'] ) || empty( $options['host'] ) ) {
         return;
@@ -114,6 +167,142 @@ function wp_starter_kit_smtp_configure_phpmailer( $phpmailer ) {
     $phpmailer->SMTPSecure = $options['encryption'] ?: '';
     $phpmailer->From       = $options['from'] ?: $options['username'];
     $phpmailer->FromName   = $options['from_name'] ?: get_bloginfo( 'name' );
+}
+
+add_filter('pre_wp_mail', 'wp_starter_kit_send_via_resend_api', 10, 2);
+function wp_starter_kit_send_via_resend_api($pre_wp_mail, $atts) {
+    $options = get_option('wp_starter_kit_smtp_options');
+    $mode = wp_starter_kit_get_mail_mode($options);
+
+    if ($mode !== 'resend_api') {
+        return $pre_wp_mail;
+    }
+
+    $api_key = trim((string)($options['resend_api_key'] ?? ''));
+    $from_email = sanitize_email($options['resend_from'] ?? '');
+    if (empty($from_email)) {
+        $from_email = sanitize_email($options['from'] ?? '');
+    }
+
+    if (empty($api_key) || empty($from_email)) {
+        return false;
+    }
+
+    $from_name = sanitize_text_field($options['from_name'] ?? '');
+    $from = $from_name ? sprintf('%s <%s>', $from_name, $from_email) : $from_email;
+
+    $headers = wp_starter_kit_parse_mail_headers($atts['headers'] ?? array());
+    $to = wp_starter_kit_normalize_recipients($atts['to'] ?? '');
+    if (empty($to)) {
+        return false;
+    }
+
+    $content_type = strtolower($headers['content_type']);
+    $payload = array(
+        'from' => $from,
+        'to' => $to,
+        'subject' => (string)($atts['subject'] ?? ''),
+    );
+
+    if (strpos($content_type, 'text/plain') !== false) {
+        $payload['text'] = wp_strip_all_tags((string)($atts['message'] ?? ''));
+    } else {
+        $payload['html'] = (string)($atts['message'] ?? '');
+    }
+
+    if (!empty($headers['cc'])) {
+        $payload['cc'] = $headers['cc'];
+    }
+    if (!empty($headers['bcc'])) {
+        $payload['bcc'] = $headers['bcc'];
+    }
+    if (!empty($headers['reply_to'])) {
+        $payload['reply_to'] = $headers['reply_to'];
+    }
+
+    $response = wp_remote_post(
+        'https://api.resend.com/emails',
+        array(
+            'timeout' => 20,
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $api_key,
+                'Content-Type' => 'application/json',
+            ),
+            'body' => wp_json_encode($payload),
+        )
+    );
+
+    if (is_wp_error($response)) {
+        return false;
+    }
+
+    $status = wp_remote_retrieve_response_code($response);
+    return $status >= 200 && $status < 300;
+}
+
+function wp_starter_kit_get_mail_mode($options = null) {
+    if (!is_array($options)) {
+        $options = get_option('wp_starter_kit_smtp_options');
+    }
+
+    $mode = $options['mode'] ?? 'smtp';
+    return in_array($mode, array('smtp', 'resend_api'), true) ? $mode : 'smtp';
+}
+
+function wp_starter_kit_parse_mail_headers($raw_headers) {
+    $parsed = array(
+        'content_type' => 'text/plain',
+        'cc' => array(),
+        'bcc' => array(),
+        'reply_to' => array(),
+    );
+
+    if (empty($raw_headers)) {
+        return $parsed;
+    }
+
+    if (!is_array($raw_headers)) {
+        $raw_headers = explode("\n", str_replace("\r\n", "\n", $raw_headers));
+    }
+
+    foreach ($raw_headers as $header_line) {
+        $header_line = trim((string)$header_line);
+        if ($header_line === '' || strpos($header_line, ':') === false) {
+            continue;
+        }
+
+        list($name, $value) = explode(':', $header_line, 2);
+        $name = strtolower(trim($name));
+        $value = trim($value);
+
+        if ($name === 'content-type') {
+            $parsed['content_type'] = $value;
+        } elseif ($name === 'cc') {
+            $parsed['cc'] = wp_starter_kit_normalize_recipients($value);
+        } elseif ($name === 'bcc') {
+            $parsed['bcc'] = wp_starter_kit_normalize_recipients($value);
+        } elseif ($name === 'reply-to') {
+            $parsed['reply_to'] = wp_starter_kit_normalize_recipients($value);
+        }
+    }
+
+    return $parsed;
+}
+
+function wp_starter_kit_normalize_recipients($recipients) {
+    if (!is_array($recipients)) {
+        $recipients = explode(',', (string)$recipients);
+    }
+
+    $result = array();
+    foreach ($recipients as $recipient) {
+        $email = sanitize_email(trim((string)$recipient));
+        if (!empty($email)) {
+            $result[] = $email;
+        }
+    }
+
+    return array_values(array_unique($result));
 }
 
 /**
@@ -132,9 +321,15 @@ function wp_starter_kit_send_test_email_callback() {
         wp_send_json_error('邮箱地址不能为空');
     }
 
-    $subject = '这是一封测试邮件';
-    $message = '恭喜你，SMTP 配置成功！这是一封测试邮件。';
-    $headers = array('Content-Type: text/html; charset=UTF-8');
+    $options = get_option('wp_starter_kit_smtp_options');
+    $subject = sanitize_text_field($_POST['test_subject'] ?? ($options['test_subject'] ?? '这是一封测试邮件'));
+    $message = wp_kses_post((string)($_POST['test_message'] ?? ($options['test_message'] ?? '恭喜你，邮件发送配置成功！这是一封测试邮件。')));
+    $content_type = sanitize_text_field($_POST['test_content_type'] ?? ($options['test_content_type'] ?? 'html'));
+    $headers = array(
+        $content_type === 'plain'
+            ? 'Content-Type: text/plain; charset=UTF-8'
+            : 'Content-Type: text/html; charset=UTF-8'
+    );
 
     $result = wp_mail($to, $subject, $message, $headers);
 
@@ -149,120 +344,6 @@ function wp_starter_kit_send_test_email_callback() {
  * 添加 AJAX 动作
  */
 add_action('wp_ajax_wp_starter_kit_send_test_email', 'wp_starter_kit_send_test_email_callback');
-
-/**
- * 修改测试邮件部分的 HTML
- */
-function wp_starter_kit_smtp_test_email_field() {
-    ?>
-    <tr valign="top">
-        <th scope="row">测试发送邮件</th>
-        <td>
-            <div id="test_email_form">
-                <?php wp_nonce_field('wp_starter_kit_test_email', 'wp_starter_kit_test_email_nonce'); ?>
-                <input type="email" id="test_email" name="test_email" placeholder="收件人邮箱"
-                    class="regular-text" style="width: 220px; display:inline-block;" />
-                <button type="button" id="send_test_email" class="button button-secondary" style="display:inline-block; margin-left: 10px;">
-                    <span class="dashicons dashicons-email" style="vertical-align: middle;"></span>
-                    发送测试邮件
-                </button>
-                <span class="spinner" style="float: none; margin-top: 0;"></span>
-                <div id="test_email_result" style="margin-top: 10px;"></div>
-            </div>
-        </td>
-    </tr>
-    <?php
-}
-
-/**
- * 修改 JavaScript 代码
- */
-add_action('admin_footer', 'wp_starter_kit_smtp_test_email_js');
-function wp_starter_kit_smtp_test_email_js() {
-    if (get_current_screen()->id !== 'tools_page_wp-starter-kit') {
-        return;
-    }
-    ?>
-    <script type="text/javascript">
-    jQuery(document).ready(function($) {
-        $('#send_test_email').on('click', function() {
-            var emailField = $('#test_email');
-            var email = emailField.val();
-            
-            if (!email) {
-                $('#test_email_result').html('<div class="notice notice-error"><p>请输入收件人邮箱地址</p></div>');
-                return;
-            }
-            
-            var $button = $(this);
-            var $spinner = $('.spinner');
-            var $result = $('#test_email_result');
-            
-            // 禁用按钮
-            $button.prop('disabled', true);
-            // 显示加载动画
-            $spinner.css('visibility', 'visible');
-            // 清空结果
-            $result.html('');
-            
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'wp_starter_kit_send_test_email',
-                    test_email: email,
-                    nonce: $('#wp_starter_kit_test_email_nonce').val()
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $result.html('<div class="notice notice-success"><p>' + response.data + '</p></div>');
-                    } else {
-                        $result.html('<div class="notice notice-error"><p>' + response.data + '</p></div>');
-                    }
-                },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    $result.html('<div class="notice notice-error"><p>发送请求时发生错误: ' + textStatus + '</p></div>');
-                },
-                complete: function() {
-                    // 启用按钮
-                    $button.prop('disabled', false);
-                    // 隐藏加载动画
-                    $spinner.css('visibility', 'hidden');
-                }
-            });
-        });
-    });
-    </script>
-    <?php
-}
-
-// 添加端口和加密方式联动的 JavaScript
-add_action('admin_footer', 'wp_starter_kit_smtp_port_js');
-function wp_starter_kit_smtp_port_js() {
-    if (get_current_screen()->id !== 'tools_page_wp-starter-kit') {
-        return;
-    }
-    ?>
-    <script type="text/javascript">
-    jQuery(document).ready(function($) {
-        $('#smtp_encryption').on('change', function() {
-            var port = '25'; // 默认端口
-            
-            switch($(this).val()) {
-                case 'ssl':
-                    port = '465';
-                    break;
-                case 'tls':
-                    port = '587';
-                    break;
-            }
-            
-            $('#smtp_port').val(port);
-        });
-    });
-    </script>
-    <?php
-}
 
 register_setting(
     'wp_starter_kit_smtp_group',

@@ -3,14 +3,14 @@
 /**
  * Plugin Name: WP Starter Kit
  * Plugin URI: https://xifeng.net/wp-starter-kit.html
- * Description: 新手必备工具集：邮件发送、回复默认编辑器、头像CDN加速、去除分类链接category。
- * Version: 1.3
+ * Description: 新手必备工具集：邮件发送（SMTP/Resend）、ID 替换工具、系统状态诊断、编辑器与链接优化。
+ * Version: 1.4.0
  * Author: 西风
  * Author URI: https://xifeng.net
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * 
- * Copyright (c) 2023-2025 西风
+ * Copyright (c) 2023-2026 西风
  * WP Starter Kit is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 2 of the License, or
@@ -30,24 +30,48 @@ defined('ABSPATH') || exit;
 add_action('admin_menu', 'wp_starter_kit_add_options_page');
 function wp_starter_kit_add_options_page()
 {
+    $menu_title = wp_starter_kit_get_menu_title();
+
     add_submenu_page(
         'tools.php',          // 父级菜单slug (工具菜单)
         'WP Starter Kit 设置', // 页面标题
-        'WP Starter Kit',     // 菜单标题
+        $menu_title,          // 菜单标题
         'manage_options',      // 权限
         'wp-starter-kit',     // 菜单slug
         'wp_starter_kit_options_page' // 回调函数
     );
 }
 
+/**
+ * 菜单标题：中文显示“新手配置插件”，其他语言保持原英文。
+ */
+function wp_starter_kit_get_menu_title()
+{
+    $locale = function_exists('get_user_locale') ? get_user_locale() : get_locale();
+
+    if (is_string($locale) && strpos($locale, 'zh_') === 0) {
+        return '新手配置插件';
+    }
+
+    return 'WP Starter Kit';
+}
+
 require_once plugin_dir_path(__FILE__) . 'includes/mail.php';
+$wp_starter_kit_id_replace_file = plugin_dir_path(__FILE__) . 'includes/id-replace.php';
+if (file_exists($wp_starter_kit_id_replace_file)) {
+    require_once $wp_starter_kit_id_replace_file;
+}
+$wp_starter_kit_system_status_file = plugin_dir_path(__FILE__) . 'includes/system-status.php';
+if (file_exists($wp_starter_kit_system_status_file)) {
+    require_once $wp_starter_kit_system_status_file;
+}
 
 /**
  * 设置页面输出
  */
 function wp_starter_kit_options_page()
 {
-    $active_tab = $_GET['tab'] ?? 'general';
+    $active_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'general';
 ?>
     <div class="wrap">
         <h1>WP Starter Kit 设置</h1>
@@ -55,22 +79,38 @@ function wp_starter_kit_options_page()
         <h2 class="nav-tab-wrapper">
             <a href="?page=wp-starter-kit&tab=general" class="nav-tab <?php echo $active_tab == 'general' ? 'nav-tab-active' : ''; ?>">常规设置</a>
             <a href="?page=wp-starter-kit&tab=smtp" class="nav-tab <?php echo $active_tab == 'smtp' ? 'nav-tab-active' : ''; ?>">SMTP 邮件设置</a>
+            <a href="?page=wp-starter-kit&tab=id-replace" class="nav-tab <?php echo $active_tab == 'id-replace' ? 'nav-tab-active' : ''; ?>">ID 替换工具</a>
+            <a href="?page=wp-starter-kit&tab=system-status" class="nav-tab <?php echo $active_tab == 'system-status' ? 'nav-tab-active' : ''; ?>">系统状态</a>
         </h2>
 
-        <form method="post" action="options.php">
-            <table class="form-table">
-                <?php
-                if ($active_tab == 'general') {
-                    // 常规设置
-                    wp_starter_kit_general_settings_tab();
-                } elseif ($active_tab == 'smtp') {
-                    // SMTP 设置
-                    wp_starter_kit_smtp_settings_tab();
-                }
-                ?>
-            </table>
-            <?php submit_button('保存设置'); ?>
-        </form>
+        <?php if ($active_tab === 'id-replace') : ?>
+            <?php if (function_exists('wp_starter_kit_render_replace_post_id_tab')) : ?>
+                <?php wp_starter_kit_render_replace_post_id_tab(); ?>
+            <?php else : ?>
+                <div class="notice notice-error inline"><p>ID 替换模块未加载。</p></div>
+            <?php endif; ?>
+        <?php elseif ($active_tab === 'system-status') : ?>
+            <?php if (function_exists('wp_starter_kit_render_system_status_tab')) : ?>
+                <?php wp_starter_kit_render_system_status_tab(); ?>
+            <?php else : ?>
+                <div class="notice notice-error inline"><p>系统状态模块未加载。</p></div>
+            <?php endif; ?>
+        <?php else : ?>
+            <form method="post" action="options.php">
+                <table class="form-table">
+                    <?php
+                    if ($active_tab == 'general') {
+                        // 常规设置
+                        wp_starter_kit_general_settings_tab();
+                    } elseif ($active_tab == 'smtp') {
+                        // SMTP 设置
+                        wp_starter_kit_smtp_settings_tab();
+                    }
+                    ?>
+                </table>
+                <?php submit_button('保存设置'); ?>
+            </form>
+        <?php endif; ?>
     </div>
 <?php
 }
@@ -89,72 +129,66 @@ function wp_starter_kit_general_settings_tab()
     <tr valign="top">
         <th scope="row">禁用 Gutenberg 编辑器</th>
         <td>
-            <label class="switch">
+            <label>
                 <input type="checkbox" name="wp_starter_kit_options[disable_editor]" value="1" <?php checked($options['disable_editor'] ?? '', 1); ?> />
-                <span class="slider round"></span>
+                禁用 Gutenberg 编辑器，恢复经典编辑器
             </label>
-            禁用 Gutenberg 编辑器，恢复经典编辑器
         </td>
     </tr>
     <tr valign="top">
         <th scope="row">禁用 Gutenberg 小工具</th>
         <td>
-            <label class="switch">
+            <label>
                 <input type="checkbox" name="wp_starter_kit_options[disable_widgets]" value="1" <?php checked($options['disable_widgets'] ?? '', 1); ?> />
-                <span class="slider round"></span>
+                禁用 Gutenberg 小工具，恢复经典小工具
             </label>
-            禁用 Gutenberg 小工具，恢复经典小工具
         </td>
     </tr>
     <tr valign="top">
         <th scope="row">启用友情链接</th>
         <td>
-            <label class="switch">
+            <label>
                 <input type="checkbox" name="wp_starter_kit_options[enable_links]" value="1" <?php checked($options['enable_links'] ?? '', 1); ?> />
-                <span class="slider round"></span>
+                启用友情链接
             </label>
-            启用友情链接
         </td>
     </tr>
     <tr valign="top">
         <th scope="row">去除分类链接中的 category</th>
         <td>
-            <label class="switch">
+            <label>
                 <input type="checkbox" name="wp_starter_kit_options[remove_category]" value="1" <?php checked($options['remove_category'] ?? '', 1); ?> />
-                <span class="slider round"></span>
+                去除分类链接中的 category
             </label>
-            去除分类链接中的 category
         </td>
     </tr>
     <tr valign="top">
         <th scope="row">禁用 Emoji 转换</th>
         <td>
-            <label class="switch">
+            <label>
                 <input type="checkbox" name="wp_starter_kit_options[disable_emoji]" value="1" <?php checked($options['disable_emoji'] ?? '', 1); ?> />
-                <span class="slider round"></span>
+                禁用 Emoji 表情转换为图片功能,提高页面加载速度
             </label>
-            禁用 Emoji 表情转换为图片功能,提高页面加载速度
         </td>
     </tr>
     <tr valign="top">
         <th scope="row">禁止版本修订</th>
         <td>
-            <label class="switch">
+            <label>
                 <input type="checkbox" name="wp_starter_kit_options[disable_revisions]" value="1" <?php checked($options['disable_revisions'] ?? '', 1); ?> />
-                <span class="slider round"></span>
+                禁止保存文章的历史版本,减少数据库存储空间
             </label>
-            禁止保存文章的历史版本,减少数据库存储空间
         </td>
     </tr>
     <tr valign="top">
         <th scope="row">数据库优化</th>
         <td>
             <button type="button" id="clean_database" class="button button-secondary">
-                <span class="dashicons dashicons-database" style="vertical-align: middle;"></span>
+                <span class="dashicons dashicons-database"></span>
                 清理数据库
             </button>
-            <span class="spinner" style="float:none;"></span>
-            <div id="clean_result" style="margin-top: 10px;"></div>
+            <span class="spinner"></span>
+            <div id="clean_result"></div>
             <p class="description">清理数据库中的垃圾数据，包括文章修订、自动草稿、垃圾评论等。</p>
         </td>
     </tr>
@@ -236,13 +270,19 @@ function wp_starter_kit_activate()
     update_option('wp_starter_kit_options', $default_options);
 
     $default_smtp_options = array(
+        'mode' => 'smtp',
         'host' => '',
         'port' => '587',
         'encryption' => '',
         'username' => '',
         'password' => '',
         'from' => '',
-        'from_name' => ''
+        'from_name' => '',
+        'resend_api_key' => '',
+        'resend_from' => '',
+        'test_subject' => '这是一封测试邮件',
+        'test_message' => "恭喜你，邮件发送配置成功！这是一封测试邮件。",
+        'test_content_type' => 'html'
     );
     update_option('wp_starter_kit_smtp_options', $default_smtp_options);
 
@@ -289,18 +329,6 @@ function wp_starter_kit_uninstall()
     delete_option('wp_starter_kit_flush_rewrite_rules');
 }
 
-/**
- * 添加 CSS 样式
- */
-add_action('admin_enqueue_scripts', 'wp_starter_kit_admin_style');
-function wp_starter_kit_admin_style($hook)
-{
-    // 修改钩子判断,tools_page_ 是工具菜单下子页面的前缀
-    if ('tools_page_wp-starter-kit' != $hook) {
-        return;
-    }
-    wp_enqueue_style('wp-starter-kit-admin', plugin_dir_url(__FILE__) . 'assets/css/admin.css', array(), '1.0.0');
-}
 /**
  * 应用设置
  */
@@ -414,12 +442,14 @@ function wp_starter_kit_admin_scripts($hook)
         return;
     }
 
-    wp_enqueue_style('wp-starter-kit-admin', plugin_dir_url(__FILE__) . 'assets/css/admin.css', array(), '1.0.0');
     wp_enqueue_script('wp-starter-kit-admin', plugin_dir_url(__FILE__) . 'assets/js/admin.js', array('jquery'), '1.0.0', true);
 
     wp_localize_script('wp-starter-kit-admin', 'wpStarterKit', array(
         'ajaxurl' => admin_url('admin-ajax.php'),
-        'nonce' => wp_create_nonce('wp_starter_kit_clean_database')
+        'cleanNonce' => wp_create_nonce('wp_starter_kit_clean_database'),
+        'testEmailNonce' => wp_create_nonce('wp_starter_kit_test_email'),
+        'replaceIdNonce' => wp_create_nonce('wp_starter_kit_replace_post_id'),
+        'replaceListNonce' => wp_create_nonce('wp_starter_kit_replace_id_list')
     ));
 }
 
