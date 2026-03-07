@@ -1,4 +1,34 @@
 jQuery(document).ready(function($) {
+
+    // ── Tab switching with localStorage persistence ──
+    (function() {
+        var params = new URLSearchParams(window.location.search);
+        var initialTab = params.get('tab');
+        if (!initialTab) {
+            try { initialTab = localStorage.getItem('xt_active_tab'); } catch(e) {}
+        }
+        if (initialTab && $('.xt-tab[data-tab="' + initialTab + '"]').length) {
+            $('.xt-tab').removeClass('is-active');
+            $('.xt-tab[data-tab="' + initialTab + '"]').addClass('is-active');
+            $('.xt-tab-panel').removeClass('is-active');
+            $('.xt-tab-panel[data-tab-panel="' + initialTab + '"]').addClass('is-active');
+        }
+
+        $('.xt-tabs').on('click', '.xt-tab', function(e) {
+            e.preventDefault();
+            var target = $(this).data('tab');
+
+            $('.xt-tab').removeClass('is-active');
+            $(this).addClass('is-active');
+
+            $('.xt-tab-panel').removeClass('is-active');
+            $('.xt-tab-panel[data-tab-panel="' + target + '"]').addClass('is-active');
+
+            try { localStorage.setItem('xt_active_tab', target); } catch(e) {}
+        });
+    })();
+
+    // ── Database cleanup ──
     $('#clean_database').on('click', function() {
         var $button = $(this);
         var $spinner = $button.next('.spinner');
@@ -12,11 +42,11 @@ jQuery(document).ready(function($) {
         $result.html('');
         
         $.ajax({
-            url: wpStarterKit.ajaxurl,
+            url: xtoolsData.ajaxurl,
             type: 'POST',
             data: {
-                action: 'wp_starter_kit_clean_database',
-                nonce: wpStarterKit.cleanNonce
+                action: 'xtools_clean_database',
+                nonce: xtoolsData.cleanNonce
             },
             success: function(response) {
                 if (response.success) {
@@ -49,7 +79,7 @@ jQuery(document).ready(function($) {
         var contentType = $('#test_email_content_type').val();
         var templateId = $('#test_email_template_id').val();
         var templateVars = $('#test_email_template_vars').val();
-        var nonce = wpStarterKit.testEmailNonce || $('#wp_starter_kit_test_email_nonce').val();
+        var nonce = xtoolsData.testEmailNonce || $('#xtools_test_email_nonce').val();
 
         if (!email) {
             $result.html('<div class="notice notice-error inline"><p>请输入收件人邮箱地址</p></div>');
@@ -61,10 +91,10 @@ jQuery(document).ready(function($) {
         $result.html('');
 
         $.ajax({
-            url: wpStarterKit.ajaxurl,
+            url: xtoolsData.ajaxurl,
             type: 'POST',
             data: {
-                action: 'wp_starter_kit_send_test_email',
+                action: 'xtools_send_test_email',
                 test_email: email,
                 test_subject: subject,
                 test_message: message,
@@ -106,17 +136,17 @@ jQuery(document).ready(function($) {
     });
 
     function setMailModeUI(mode) {
-        var showSmtp = mode === 'smtp';
-        $('.wp-starter-kit-smtp-row').toggleClass('hidden', !showSmtp);
-        $('.wp-starter-kit-resend-row').toggleClass('hidden', showSmtp);
+        $('.xtools-smtp-row').toggleClass('hidden', mode !== 'smtp');
+        $('.xtools-resend-row').toggleClass('hidden', mode !== 'resend_api');
+        $('.xtools-sendflare-row').toggleClass('hidden', mode !== 'sendflare_api');
     }
 
-    $('#mail_send_mode').on('change', function() {
+    $('.mail-send-mode-radio').on('change', function() {
         setMailModeUI($(this).val());
     });
 
-    if ($('#mail_send_mode').length) {
-        setMailModeUI($('#mail_send_mode').val());
+    if ($('.mail-send-mode-radio:checked').length) {
+        setMailModeUI($('.mail-send-mode-radio:checked').val());
     }
 
     function setCustomCdnRowUI() {
@@ -124,10 +154,63 @@ jQuery(document).ready(function($) {
         $('#custom_cdn_url_row').toggleClass('hidden', !isCustom);
     }
 
+    function setCdnCustomRow(selectId, rowId) {
+        var isCustom = $(selectId).val() === 'custom';
+        $(rowId).toggleClass('hidden', !isCustom);
+    }
+
     $('#cdn_url_select').on('change', setCustomCdnRowUI);
     if ($('#cdn_url_select').length) {
         setCustomCdnRowUI();
     }
+
+    $('#cdn_fonts_select').on('change', function() { setCdnCustomRow('#cdn_fonts_select', '#custom_cdn_fonts_row'); });
+    $('#cdn_jsdelivr_select').on('change', function() { setCdnCustomRow('#cdn_jsdelivr_select', '#custom_cdn_jsdelivr_row'); });
+    $('#cdn_cdnjs_select').on('change', function() { setCdnCustomRow('#cdn_cdnjs_select', '#custom_cdn_cdnjs_row'); });
+
+    if ($('#cdn_fonts_select').length) { setCdnCustomRow('#cdn_fonts_select', '#custom_cdn_fonts_row'); }
+    if ($('#cdn_jsdelivr_select').length) { setCdnCustomRow('#cdn_jsdelivr_select', '#custom_cdn_jsdelivr_row'); }
+    if ($('#cdn_cdnjs_select').length) { setCdnCustomRow('#cdn_cdnjs_select', '#custom_cdn_cdnjs_row'); }
+
+    // 一键 CDN 预设方案
+    var cdnPresets = {
+        bluecdn: {
+            cdn_url: 'gravatar.bluecdn.com',
+            cdn_fonts: 'fonts.bluecdn.com',
+            cdn_jsdelivr: 'static.bluecdn.com',
+            cdn_cdnjs: 'cdnjs.bluecdn.com'
+        },
+        yite: {
+            cdn_url: 'gravatar.yite.net',
+            cdn_fonts: 'fonts.yite.net',
+            cdn_jsdelivr: 'cdn.yite.net',
+            cdn_cdnjs: 'cdnjs.yite.net'
+        }
+    };
+
+    function applyCdnPreset(presetKey) {
+        var values = cdnPresets[presetKey] || {};
+        $('#cdn_url_select').val(values.cdn_url || '');
+        $('#cdn_fonts_select').val(values.cdn_fonts || '');
+        $('#cdn_jsdelivr_select').val(values.cdn_jsdelivr || '');
+        $('#cdn_cdnjs_select').val(values.cdn_cdnjs || '');
+
+        setCustomCdnRowUI();
+        setCdnCustomRow('#cdn_fonts_select', '#custom_cdn_fonts_row');
+        setCdnCustomRow('#cdn_jsdelivr_select', '#custom_cdn_jsdelivr_row');
+        setCdnCustomRow('#cdn_cdnjs_select', '#custom_cdn_cdnjs_row');
+    }
+
+    $('#cdn_preset_select').on('change', function() {
+        var preset = $(this).val();
+        if (!preset) return;
+        if (preset === 'clear') {
+            applyCdnPreset('');
+        } else {
+            applyCdnPreset(preset);
+        }
+        $(this).val('');
+    });
 
     var templateState = {
         templates: [],
@@ -226,13 +309,13 @@ jQuery(document).ready(function($) {
         }
 
         var payload = $.extend({
-            action: 'wp_starter_kit_mail_template_manage',
-            nonce: wpStarterKit.mailTemplateNonce,
+            action: 'xtools_mail_template_manage',
+            nonce: xtoolsData.mailTemplateNonce,
             op: op
         }, extraData || {});
 
         $.ajax({
-            url: wpStarterKit.ajaxurl,
+            url: xtoolsData.ajaxurl,
             type: 'POST',
             data: payload,
             success: function(response) {
@@ -406,11 +489,11 @@ jQuery(document).ready(function($) {
         var $spinner = $('#dbm_spinner');
         $spinner.addClass('is-active');
         $.ajax({
-            url: wpStarterKit.ajaxurl,
+            url: xtoolsData.ajaxurl,
             type: 'POST',
             data: $.extend({
-                action: 'wp_starter_kit_db_manager',
-                nonce: wpStarterKit.dbManagerNonce,
+                action: 'xtools_db_manager',
+                nonce: xtoolsData.dbManagerNonce,
                 op: op
             }, data || {}),
             success: function(response) {
@@ -587,6 +670,31 @@ jQuery(document).ready(function($) {
         });
     });
 
+    $('#dbm_backup_delete').on('click', function() {
+        var fileName = $('#dbm_backup_select').val();
+        if (!fileName) {
+            dbmBackupNotice('请先选择备份文件。', false);
+            return;
+        }
+
+        if (!window.confirm('确定删除备份文件 "' + fileName + '" 吗？此操作不可恢复。')) {
+            return;
+        }
+
+        var $spinner = $('#dbm_backup_spinner');
+        $spinner.addClass('is-active');
+        dbmAjax('backup_delete', { file_name: fileName }, function(response) {
+            if (!response.success) {
+                dbmBackupNotice((response.data && response.data.message) || '删除失败', false);
+                $spinner.removeClass('is-active');
+                return;
+            }
+            dbmRenderBackups((response.data && response.data.backups) || []);
+            dbmBackupNotice((response.data && response.data.message) || '删除成功', true);
+            $spinner.removeClass('is-active');
+        });
+    });
+
     $('#dbm_reload_tables').on('click', function() {
         dbmLoadTables();
     });
@@ -692,11 +800,11 @@ jQuery(document).ready(function($) {
         setReplaceLog(['正在执行替换，请稍候...']);
 
         $.ajax({
-            url: wpStarterKit.ajaxurl,
+            url: xtoolsData.ajaxurl,
             type: 'POST',
             data: {
-                action: 'wp_starter_kit_replace_post_id',
-                nonce: wpStarterKit.replaceIdNonce,
+                action: 'xtools_replace_post_id',
+                nonce: xtoolsData.replaceIdNonce,
                 old_id: oldId,
                 new_id: newId,
                 post_type: postType
@@ -801,11 +909,11 @@ jQuery(document).ready(function($) {
         $('#replace_list_load, #replace_list_prev, #replace_list_next').prop('disabled', true);
 
         $.ajax({
-            url: wpStarterKit.ajaxurl,
+            url: xtoolsData.ajaxurl,
             type: 'POST',
             data: {
-                action: 'wp_starter_kit_replace_id_list',
-                nonce: wpStarterKit.replaceListNonce,
+                action: 'xtools_replace_id_list',
+                nonce: xtoolsData.replaceListNonce,
                 post_type: postType,
                 status: status,
                 search: search,

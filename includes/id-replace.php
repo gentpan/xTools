@@ -2,7 +2,7 @@
 /**
  * ID 替换工具
  *
- * @package WP Starter Kit
+ * @package xTools
  */
 
 defined('ABSPATH') || exit;
@@ -10,9 +10,9 @@ defined('ABSPATH') || exit;
 /**
  * 渲染 ID 替换工具选项卡。
  */
-function wp_starter_kit_render_replace_post_id_tab()
+function xtools_render_replace_post_id_tab()
 {
-    $post_types = wp_starter_kit_get_replaceable_post_types();
+    $post_types = xtools_get_replaceable_post_types();
     $list_post_types = array('all' => '全部类型') + $post_types;
     $statuses = get_post_stati(array(), 'objects');
     ?>
@@ -139,7 +139,7 @@ function wp_starter_kit_render_replace_post_id_tab()
 /**
  * 可替换的 post type 列表。
  */
-function wp_starter_kit_get_replaceable_post_types()
+function xtools_get_replaceable_post_types()
 {
     $result = array();
     $objects = get_post_types(array('show_ui' => true), 'objects');
@@ -160,10 +160,10 @@ function wp_starter_kit_get_replaceable_post_types()
     return $result;
 }
 
-add_action('wp_ajax_wp_starter_kit_replace_post_id', 'wp_starter_kit_replace_post_id_callback');
-function wp_starter_kit_replace_post_id_callback()
+add_action('wp_ajax_xtools_replace_post_id', 'xtools_replace_post_id_callback');
+function xtools_replace_post_id_callback()
 {
-    check_ajax_referer('wp_starter_kit_replace_post_id', 'nonce');
+    check_ajax_referer('xtools_replace_post_id', 'nonce');
 
     if (!current_user_can('manage_options')) {
         wp_send_json_error(array('log' => array('权限不足')));
@@ -173,7 +173,7 @@ function wp_starter_kit_replace_post_id_callback()
     $new_id = absint($_POST['new_id'] ?? 0);
     $post_type = sanitize_key($_POST['post_type'] ?? 'post');
 
-    $result = wp_starter_kit_replace_post_id_logic($old_id, $new_id, $post_type);
+    $result = xtools_replace_post_id_logic($old_id, $new_id, $post_type);
     if ($result['success']) {
         wp_send_json_success(array('log' => $result['log']));
     }
@@ -181,10 +181,10 @@ function wp_starter_kit_replace_post_id_callback()
     wp_send_json_error(array('log' => $result['log']));
 }
 
-add_action('wp_ajax_wp_starter_kit_replace_id_list', 'wp_starter_kit_replace_id_list_callback');
-function wp_starter_kit_replace_id_list_callback()
+add_action('wp_ajax_xtools_replace_id_list', 'xtools_replace_id_list_callback');
+function xtools_replace_id_list_callback()
 {
-    check_ajax_referer('wp_starter_kit_replace_id_list', 'nonce');
+    check_ajax_referer('xtools_replace_id_list', 'nonce');
 
     if (!current_user_can('manage_options')) {
         wp_send_json_error(array('message' => '权限不足'));
@@ -197,19 +197,19 @@ function wp_starter_kit_replace_id_list_callback()
     $per_page = absint($_POST['per_page'] ?? 20);
     $per_page = in_array($per_page, array(20, 50, 100), true) ? $per_page : 20;
 
-    $result = wp_starter_kit_get_replace_list_data($post_type, $status, $search, $page, $per_page);
+    $result = xtools_get_replace_list_data($post_type, $status, $search, $page, $per_page);
     wp_send_json_success($result);
 }
 
 /**
  * 执行 ID 替换逻辑。
  */
-function wp_starter_kit_replace_post_id_logic($old_id, $new_id, $post_type)
+function xtools_replace_post_id_logic($old_id, $new_id, $post_type)
 {
     global $wpdb;
 
     $log = array();
-    $replaceable_types = wp_starter_kit_get_replaceable_post_types();
+    $replaceable_types = xtools_get_replaceable_post_types();
 
     if ($old_id <= 0 || $new_id <= 0 || $old_id === $new_id) {
         return array(
@@ -306,11 +306,11 @@ function wp_starter_kit_replace_post_id_logic($old_id, $new_id, $post_type)
     );
 }
 
-function wp_starter_kit_get_replace_list_data($post_type, $status, $search, $page, $per_page)
+function xtools_get_replace_list_data($post_type, $status, $search, $page, $per_page)
 {
     global $wpdb;
 
-    $allowed_types = wp_starter_kit_get_replaceable_post_types();
+    $allowed_types = xtools_get_replaceable_post_types();
     $allowed_statuses = get_post_stati(array(), 'names');
 
     $where = array('1=1');

@@ -1,0 +1,501 @@
+/**
+ * xTools - Admin Unified Styles
+ * Matches WordPress AI Assistant design language
+ * Prefix: xt-
+ */
+
+@import url('https://fonts.bluecdn.com/css2?family=Cairo+Play:wght@900&display=swap');
+
+/* ── Body overrides (plugin page only) ── */
+html {
+  scrollbar-gutter: stable;
+}
+body.tools_page_xtools #wpcontent {
+  padding-left: 0;
+}
+body.tools_page_xtools #wpbody-content {
+  padding-bottom: 0;
+}
+body.tools_page_xtools .wrap {
+  margin: 0;
+}
+body.tools_page_xtools #footer-thankyou,
+body.tools_page_xtools #footer-upgrade {
+  display: none;
+}
+
+/* ── Shell ── */
+.xt-shell {
+  width: auto;
+  max-width: none;
+  box-sizing: border-box;
+  border: 1px solid #cfd6dd;
+  background: #ffffff;
+  box-shadow: none;
+  overflow: hidden;
+  border-radius: 0;
+}
+
+/* ── Hero ── */
+.xt-hero {
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid #d7dde3;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+.xt-hero-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.xt-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.xt-page-head h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 900;
+}
+.xt-title-mark {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 22px;
+}
+.xt-title-mark .dashicons {
+  font-size: 21px;
+  width: 21px;
+  height: 21px;
+  line-height: 1;
+  color: #2d6ca3;
+}
+.xt-title-text {
+  display: inline-block;
+  font-family: 'Cairo Play', sans-serif;
+  font-weight: 900;
+}
+.xt-page-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: #5c6570;
+  justify-content: flex-end;
+}
+.xt-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  text-decoration: none;
+}
+.xt-badge-kicker {
+  background: #edf4ff;
+  border-color: #c7daf8;
+  color: #315d9b;
+}
+.xt-badge-version {
+  background: #eef8ee;
+  border-color: #cbe3cb;
+  color: #2f6a46;
+}
+.xt-badge-author {
+  background: #fff1e6;
+  border-color: #f1d0b5;
+  color: #9a5a2e;
+  text-decoration: none;
+}
+.xt-hero-description {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #56606b;
+  white-space: nowrap;
+}
+
+/* ── Tab Bar ── */
+.xt-tabs-wrap {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 44px;
+  padding: 0 12px;
+  background: transparent;
+  border-bottom: 1px solid #d7dde3;
+}
+.xt-tabs {
+  display: flex;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border-bottom: none;
+  background: transparent;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: flex-start;
+  border-radius: 0;
+  width: auto;
+  z-index: 1;
+}
+.xt-tab {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #d7dde3;
+  border-top: none;
+  border-bottom: none;
+  background: #ffffff;
+  color: #11161b;
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+  margin: 0;
+  margin-right: -1px;
+  cursor: pointer;
+  border-radius: 0;
+  line-height: 1;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+.xt-tab .xt-tab-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  line-height: 1;
+  color: #11161b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 16px;
+  transition: color 0.18s ease;
+}
+.xt-tab .xt-tab-icon .dashicons {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+.xt-tab.is-active {
+  color: #11161b;
+  background: #ffffff;
+  border-color: #d7dde3;
+  border-bottom: none;
+  margin-bottom: -1px;
+  z-index: 2;
+}
+.xt-tab.is-active .xt-tab-icon {
+  color: #11161b;
+}
+.xt-tab:hover {
+  color: #11161b;
+  background: #f8fbff;
+  border-color: #cfd8e2;
+}
+.xt-tab:hover .xt-tab-icon {
+  color: #11161b;
+}
+.xt-tab.is-active:hover {
+  color: #11161b;
+  background: #ffffff;
+  border-color: #d7dde3;
+  border-bottom: none;
+}
+.xt-tab.is-active:hover .xt-tab-icon {
+  color: #11161b;
+}
+
+/* ── Tab Panels ── */
+.xt-tab-panel {
+  display: none;
+}
+.xt-tab-panel.is-active {
+  display: block;
+  margin-top: 0;
+  padding: 0;
+  background: #ffffff;
+  border-top: none;
+  animation: xt-panel-in 0.22s ease;
+}
+@keyframes xt-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Settings Grid ── */
+.xt-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 0;
+  margin-top: 0;
+}
+.xt-settings-grid .card {
+  max-width: none;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid #d8dee5;
+  border-radius: 0;
+  box-shadow: none;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+.xt-settings-grid .card:last-child {
+  border-bottom: none;
+}
+.xt-settings-grid .card:nth-last-child(2):nth-child(odd) {
+  border-bottom: none;
+}
+.xt-settings-grid .card h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+.xt-settings-grid .card .regular-text {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.xt-settings-grid .card select {
+  max-width: 100%;
+}
+
+/* ── Full Width ── */
+.xt-full {
+  grid-column: 1 / -1;
+}
+
+/* ── Form Rows ── */
+.xt-form-row {
+  margin-bottom: 12px;
+}
+.xt-form-row:last-child {
+  margin-bottom: 0;
+}
+.xt-form-row > label:first-child {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.xt-form-row .description {
+  margin-top: 6px;
+}
+
+/* ── Form Elements (sharp corners) ── */
+.xt-shell .button,
+.xt-shell input[type="text"],
+.xt-shell input[type="url"],
+.xt-shell input[type="email"],
+.xt-shell input[type="password"],
+.xt-shell input[type="number"],
+.xt-shell select,
+.xt-shell textarea {
+  border-radius: 0 !important;
+}
+
+/* ── Button with icon ── */
+.xt-shell .xt-btn-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+.xt-shell .xt-btn-icon .dashicons {
+  font-size: 16px !important;
+  width: 16px !important;
+  height: 16px !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+}
+
+/* ── Radio Group ── */
+.xt-radio-group {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.xt-radio-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+/* ── Inline Actions ── */
+.xt-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f1;
+}
+.xt-inline-actions .button-primary {
+  margin: 0 !important;
+}
+.xt-inline-actions .spinner {
+  float: none;
+  margin: 0;
+}
+
+/* ── Panel inner padding (for non-grid tabs) ── */
+.xt-tab-panel-inner {
+  padding: 16px;
+}
+
+/* ── Inner panel titles (match card h2/h3 style) ── */
+.xt-tab-panel-inner > h2 {
+  margin: 0 0 4px;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #11161b;
+}
+.xt-tab-panel-inner > h3 {
+  margin: 18px 0 8px;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #11161b;
+}
+.xt-tab-panel-inner > h2:not(:first-child) {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #e8ecf0;
+}
+.xt-tab-panel-inner > p.description {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #56606b;
+}
+.xt-tab-panel-inner > hr {
+  margin: 16px 0;
+  border: none;
+  border-top: 1px solid #e8ecf0;
+}
+
+/* ── Inner panel form-table ── */
+.xt-tab-panel-inner .form-table {
+  margin-top: 8px;
+  border: none;
+}
+.xt-tab-panel-inner .form-table th {
+  padding: 10px 10px 10px 0;
+  font-weight: 600;
+  font-size: 13px;
+  color: #11161b;
+}
+.xt-tab-panel-inner .form-table td {
+  padding: 10px 0;
+  font-size: 13px;
+}
+.xt-tab-panel-inner .form-table .regular-text {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Inner panel widefat tables ── */
+.xt-tab-panel-inner .widefat {
+  border-radius: 0;
+  border-color: #d8dee5;
+}
+.xt-tab-panel-inner .widefat th,
+.xt-tab-panel-inner .widefat td {
+  font-size: 13px;
+}
+
+/* ── Inner panel notices ── */
+.xt-tab-panel-inner .notice {
+  margin: 0 0 12px;
+  border-radius: 0;
+}
+
+/* ── Inner panel pre/code ── */
+.xt-tab-panel-inner pre {
+  background: #f6f7f7;
+  border: 1px solid #d8dee5;
+  border-radius: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: auto;
+  max-height: 300px;
+}
+
+/* ── Notice overrides inside cards ── */
+.xt-settings-grid .card .notice {
+  margin: 8px 0 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+  .xt-hero {
+    padding: 12px 14px 10px;
+  }
+  .xt-page-head {
+    align-items: flex-start;
+  }
+  .xt-page-head h1 {
+    font-size: 17px;
+  }
+  .xt-title-mark {
+    width: 20px;
+    height: 20px;
+    flex-basis: 20px;
+  }
+  .xt-title-mark .dashicons {
+    font-size: 19px;
+    width: 19px;
+    height: 19px;
+  }
+  .xt-settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .xt-settings-grid .card {
+    border-right: none;
+  }
+  .xt-tab {
+    flex: 1 1 calc(50% - 1px);
+  }
+}
+@media (max-width: 640px) {
+  .xt-page-meta > * {
+    min-height: 20px;
+    padding: 0 6px;
+  }
+  .xt-tab {
+    flex: 1 1 100%;
+  }
+}

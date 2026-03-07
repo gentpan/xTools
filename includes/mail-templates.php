@@ -2,17 +2,17 @@
 /**
  * 邮件模板中心
  *
- * @package WP Starter Kit
+ * @package xTools
  */
 
 defined('ABSPATH') || exit;
 
-function wp_starter_kit_get_mail_templates_option_name()
+function xtools_get_mail_templates_option_name()
 {
-    return 'wp_starter_kit_mail_templates';
+    return 'xtools_mail_templates';
 }
 
-function wp_starter_kit_get_default_mail_template()
+function xtools_get_default_mail_template()
 {
     return array(
         'id' => 'default_notice',
@@ -27,26 +27,26 @@ function wp_starter_kit_get_default_mail_template()
     );
 }
 
-function wp_starter_kit_get_mail_templates()
+function xtools_get_mail_templates()
 {
-    $option_name = wp_starter_kit_get_mail_templates_option_name();
+    $option_name = xtools_get_mail_templates_option_name();
     $templates = get_option($option_name, array());
 
     if (!is_array($templates) || empty($templates)) {
-        $templates = array(wp_starter_kit_get_default_mail_template());
+        $templates = array(xtools_get_default_mail_template());
         update_option($option_name, $templates);
     }
 
     $normalized = array();
     foreach ($templates as $template) {
-        $sanitized = wp_starter_kit_sanitize_single_mail_template($template);
+        $sanitized = xtools_sanitize_single_mail_template($template);
         if (!empty($sanitized['id'])) {
             $normalized[] = $sanitized;
         }
     }
 
     if (empty($normalized)) {
-        $normalized = array(wp_starter_kit_get_default_mail_template());
+        $normalized = array(xtools_get_default_mail_template());
     }
 
     $has_default = false;
@@ -65,7 +65,7 @@ function wp_starter_kit_get_mail_templates()
     return $normalized;
 }
 
-function wp_starter_kit_sanitize_single_mail_template($template)
+function xtools_sanitize_single_mail_template($template)
 {
     $allowed_content_types = array('html', 'plain');
 
@@ -92,9 +92,9 @@ function wp_starter_kit_sanitize_single_mail_template($template)
     );
 }
 
-function wp_starter_kit_render_mail_templates_tab()
+function xtools_render_mail_templates_tab()
 {
-    $templates = wp_starter_kit_get_mail_templates();
+    $templates = xtools_get_mail_templates();
     ?>
     <h2>邮件模板中心</h2>
     <p class="description">支持多模板管理，可编辑 HTML 与纯文本正文，并在测试发送时按模板渲染。</p>
@@ -178,10 +178,10 @@ function wp_starter_kit_render_mail_templates_tab()
     <?php
 }
 
-function wp_starter_kit_get_mail_template_by_id($template_id)
+function xtools_get_mail_template_by_id($template_id)
 {
     $template_id = sanitize_key($template_id);
-    $templates = wp_starter_kit_get_mail_templates();
+    $templates = xtools_get_mail_templates();
     foreach ($templates as $template) {
         if ($template['id'] === $template_id) {
             return $template;
@@ -191,9 +191,9 @@ function wp_starter_kit_get_mail_template_by_id($template_id)
     return null;
 }
 
-function wp_starter_kit_get_default_mail_template_data()
+function xtools_get_default_mail_template_data()
 {
-    $templates = wp_starter_kit_get_mail_templates();
+    $templates = xtools_get_mail_templates();
     foreach ($templates as $template) {
         if (!empty($template['is_default'])) {
             return $template;
@@ -202,7 +202,7 @@ function wp_starter_kit_get_default_mail_template_data()
     return $templates[0];
 }
 
-function wp_starter_kit_get_template_variables($custom_vars = array())
+function xtools_get_template_variables($custom_vars = array())
 {
     $vars = array(
         'site_name' => get_bloginfo('name'),
@@ -225,9 +225,9 @@ function wp_starter_kit_get_template_variables($custom_vars = array())
     return $vars;
 }
 
-function wp_starter_kit_render_mail_template($template, $custom_vars = array())
+function xtools_render_mail_template($template, $custom_vars = array())
 {
-    $vars = wp_starter_kit_get_template_variables($custom_vars);
+    $vars = xtools_get_template_variables($custom_vars);
     $replace = array();
     foreach ($vars as $key => $value) {
         $replace['{{' . $key . '}}'] = $value;
@@ -241,7 +241,7 @@ function wp_starter_kit_render_mail_template($template, $custom_vars = array())
     );
 }
 
-function wp_starter_kit_parse_template_vars_from_request($raw_json)
+function xtools_parse_template_vars_from_request($raw_json)
 {
     if (!is_string($raw_json) || trim($raw_json) === '') {
         return array();
@@ -251,17 +251,17 @@ function wp_starter_kit_parse_template_vars_from_request($raw_json)
     return is_array($decoded) ? $decoded : array();
 }
 
-add_action('wp_ajax_wp_starter_kit_mail_template_manage', 'wp_starter_kit_mail_template_manage_callback');
-function wp_starter_kit_mail_template_manage_callback()
+add_action('wp_ajax_xtools_mail_template_manage', 'xtools_mail_template_manage_callback');
+function xtools_mail_template_manage_callback()
 {
-    check_ajax_referer('wp_starter_kit_mail_template_manage', 'nonce');
+    check_ajax_referer('xtools_mail_template_manage', 'nonce');
 
     if (!current_user_can('manage_options')) {
         wp_send_json_error(array('message' => '权限不足'));
     }
 
     $op = sanitize_key($_POST['op'] ?? '');
-    $templates = wp_starter_kit_get_mail_templates();
+    $templates = xtools_get_mail_templates();
 
     if ($op === 'list') {
         wp_send_json_success(array('templates' => array_values($templates)));
@@ -269,7 +269,7 @@ function wp_starter_kit_mail_template_manage_callback()
 
     if ($op === 'save') {
         $raw = $_POST['template'] ?? array();
-        $template = wp_starter_kit_sanitize_single_mail_template($raw);
+        $template = xtools_sanitize_single_mail_template($raw);
         $template['updated_at'] = current_time('mysql');
 
         $found = false;
@@ -292,7 +292,7 @@ function wp_starter_kit_mail_template_manage_callback()
             }
         }
 
-        update_option(wp_starter_kit_get_mail_templates_option_name(), array_values($templates));
+        update_option(xtools_get_mail_templates_option_name(), array_values($templates));
         wp_send_json_success(array('templates' => array_values($templates), 'message' => '模板已保存'));
     }
 
@@ -303,7 +303,7 @@ function wp_starter_kit_mail_template_manage_callback()
         }));
 
         if (empty($templates)) {
-            $templates = array(wp_starter_kit_get_default_mail_template());
+            $templates = array(xtools_get_default_mail_template());
         }
 
         $has_default = false;
@@ -317,13 +317,13 @@ function wp_starter_kit_mail_template_manage_callback()
             $templates[0]['is_default'] = 1;
         }
 
-        update_option(wp_starter_kit_get_mail_templates_option_name(), array_values($templates));
+        update_option(xtools_get_mail_templates_option_name(), array_values($templates));
         wp_send_json_success(array('templates' => array_values($templates), 'message' => '模板已删除'));
     }
 
     if ($op === 'duplicate') {
         $template_id = sanitize_key($_POST['template_id'] ?? '');
-        $source = wp_starter_kit_get_mail_template_by_id($template_id);
+        $source = xtools_get_mail_template_by_id($template_id);
         if (!$source) {
             wp_send_json_error(array('message' => '模板不存在'));
         }
@@ -333,18 +333,18 @@ function wp_starter_kit_mail_template_manage_callback()
         $source['is_default'] = 0;
         $source['updated_at'] = current_time('mysql');
         $templates[] = $source;
-        update_option(wp_starter_kit_get_mail_templates_option_name(), array_values($templates));
+        update_option(xtools_get_mail_templates_option_name(), array_values($templates));
         wp_send_json_success(array('templates' => array_values($templates), 'message' => '模板已复制'));
     }
 
     if ($op === 'preview') {
         $template_id = sanitize_key($_POST['template_id'] ?? '');
-        $template = wp_starter_kit_get_mail_template_by_id($template_id);
+        $template = xtools_get_mail_template_by_id($template_id);
         if (!$template) {
-            $template = wp_starter_kit_get_default_mail_template_data();
+            $template = xtools_get_default_mail_template_data();
         }
-        $vars = wp_starter_kit_parse_template_vars_from_request($_POST['vars_json'] ?? '');
-        $rendered = wp_starter_kit_render_mail_template($template, $vars);
+        $vars = xtools_parse_template_vars_from_request($_POST['vars_json'] ?? '');
+        $rendered = xtools_render_mail_template($template, $vars);
         wp_send_json_success(array('rendered' => $rendered));
     }
 
@@ -355,13 +355,13 @@ function wp_starter_kit_mail_template_manage_callback()
             wp_send_json_error(array('message' => '收件人邮箱不能为空'));
         }
 
-        $template = wp_starter_kit_get_mail_template_by_id($template_id);
+        $template = xtools_get_mail_template_by_id($template_id);
         if (!$template) {
-            $template = wp_starter_kit_get_default_mail_template_data();
+            $template = xtools_get_default_mail_template_data();
         }
-        $vars = wp_starter_kit_parse_template_vars_from_request($_POST['vars_json'] ?? '');
+        $vars = xtools_parse_template_vars_from_request($_POST['vars_json'] ?? '');
         $vars['user_email'] = $to;
-        $rendered = wp_starter_kit_render_mail_template($template, $vars);
+        $rendered = xtools_render_mail_template($template, $vars);
 
         $headers = array(
             $rendered['content_type'] === 'plain'

@@ -2,14 +2,14 @@
 /**
  * 系统状态页
  *
- * @package WP Starter Kit
+ * @package xTools
  */
 
 defined('ABSPATH') || exit;
 
-function wp_starter_kit_render_system_status_tab()
+function xtools_render_system_status_tab()
 {
-    $rows = wp_starter_kit_get_system_status_rows();
+    $rows = xtools_get_system_status_rows();
     ?>
     <h2>系统状态总览</h2>
     <p class="description">用于排查环境问题，数据为当前实时状态。</p>
@@ -30,7 +30,7 @@ function wp_starter_kit_render_system_status_tab()
     <?php
 }
 
-function wp_starter_kit_get_system_status_rows()
+function xtools_get_system_status_rows()
 {
     global $wpdb;
 
@@ -65,7 +65,7 @@ function wp_starter_kit_get_system_status_rows()
     foreach ($paths as $label => $path) {
         $path_rows[] = array(
             'label' => $label,
-            'value' => esc_html($path) . '<br><small>' . esc_html(wp_starter_kit_get_path_permissions_text($path)) . '</small>',
+            'value' => esc_html($path) . '<br><small>' . esc_html(xtools_get_path_permissions_text($path)) . '</small>',
         );
     }
 
@@ -94,7 +94,7 @@ function wp_starter_kit_get_system_status_rows()
     );
 }
 
-function wp_starter_kit_get_path_permissions_text($path)
+function xtools_get_path_permissions_text($path)
 {
     if (empty($path) || !file_exists($path)) {
         return '路径不存在';

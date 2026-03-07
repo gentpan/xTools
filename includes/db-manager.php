@@ -2,12 +2,12 @@
 /**
  * 数据库管理（读取与可控修改）
  *
- * @package WP Starter Kit
+ * @package xTools
  */
 
 defined('ABSPATH') || exit;
 
-function wp_starter_kit_render_db_manager_tab()
+function xtools_render_db_manager_tab()
 {
     ?>
     <h2>数据库管理</h2>
@@ -34,6 +34,7 @@ function wp_starter_kit_render_db_manager_tab()
                 <select id="dbm_backup_select"></select>
                 <button type="button" id="dbm_backup_refresh" class="button">刷新备份列表</button>
                 <button type="button" id="dbm_backup_restore" class="button button-secondary">一键恢复</button>
+                <button type="button" id="dbm_backup_delete" class="button">删除备份</button>
                 <p class="description">恢复会覆盖当前数据库前缀表数据，请谨慎操作。</p>
             </td>
         </tr>
@@ -96,14 +97,14 @@ function wp_starter_kit_render_db_manager_tab()
     <?php
 }
 
-function wp_starter_kit_dbm_allowed_tables()
+function xtools_dbm_allowed_tables()
 {
     global $wpdb;
     $rows = $wpdb->get_col($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($wpdb->prefix) . '%'));
     return is_array($rows) ? $rows : array();
 }
 
-function wp_starter_kit_dbm_get_primary_key($table)
+function xtools_dbm_get_primary_key($table)
 {
     global $wpdb;
     $key = $wpdb->get_var(
@@ -120,36 +121,36 @@ function wp_starter_kit_dbm_get_primary_key($table)
     return $first_column ?: '';
 }
 
-function wp_starter_kit_dbm_validate_table($table)
+function xtools_dbm_validate_table($table)
 {
     $table = sanitize_text_field($table);
-    return in_array($table, wp_starter_kit_dbm_allowed_tables(), true) ? $table : '';
+    return in_array($table, xtools_dbm_allowed_tables(), true) ? $table : '';
 }
 
-function wp_starter_kit_dbm_backup_dir()
+function xtools_dbm_backup_dir()
 {
     $upload = wp_get_upload_dir();
-    $dir = trailingslashit($upload['basedir']) . 'wp-starter-kit-backups';
+    $dir = trailingslashit($upload['basedir']) . 'xtools-backups';
     if (!file_exists($dir)) {
         wp_mkdir_p($dir);
     }
     return $dir;
 }
 
-function wp_starter_kit_dbm_backup_file_name()
+function xtools_dbm_backup_file_name()
 {
     return 'db-backup-' . gmdate('Ymd-His') . '.json';
 }
 
-function wp_starter_kit_dbm_backup_file_path($file_name)
+function xtools_dbm_backup_file_path($file_name)
 {
     $safe = sanitize_file_name($file_name);
-    return trailingslashit(wp_starter_kit_dbm_backup_dir()) . $safe;
+    return trailingslashit(xtools_dbm_backup_dir()) . $safe;
 }
 
-function wp_starter_kit_dbm_list_backups()
+function xtools_dbm_list_backups()
 {
-    $dir = wp_starter_kit_dbm_backup_dir();
+    $dir = xtools_dbm_backup_dir();
     $files = glob(trailingslashit($dir) . 'db-backup-*.json');
     if (!is_array($files)) {
         return array();
@@ -168,11 +169,11 @@ function wp_starter_kit_dbm_list_backups()
     return $result;
 }
 
-function wp_starter_kit_dbm_create_backup()
+function xtools_dbm_create_backup()
 {
     global $wpdb;
 
-    $tables = wp_starter_kit_dbm_allowed_tables();
+    $tables = xtools_dbm_allowed_tables();
     if (empty($tables)) {
         return new WP_Error('no_tables', '未找到可备份数据表');
     }
@@ -182,7 +183,7 @@ function wp_starter_kit_dbm_create_backup()
             'created_at' => gmdate('c'),
             'site_url' => home_url('/'),
             'db_prefix' => $wpdb->prefix,
-            'plugin' => 'wp-starter-kit',
+            'plugin' => 'xtools',
             'format' => 'json-v1',
         ),
         'tables' => array(),
@@ -201,8 +202,8 @@ function wp_starter_kit_dbm_create_backup()
         );
     }
 
-    $file_name = wp_starter_kit_dbm_backup_file_name();
-    $file_path = wp_starter_kit_dbm_backup_file_path($file_name);
+    $file_name = xtools_dbm_backup_file_name();
+    $file_path = xtools_dbm_backup_file_path($file_name);
     $json = wp_json_encode($backup);
     if ($json === false) {
         return new WP_Error('encode_failed', '备份编码失败');
@@ -220,11 +221,11 @@ function wp_starter_kit_dbm_create_backup()
     );
 }
 
-function wp_starter_kit_dbm_restore_backup($file_name)
+function xtools_dbm_restore_backup($file_name)
 {
     global $wpdb;
 
-    $path = wp_starter_kit_dbm_backup_file_path($file_name);
+    $path = xtools_dbm_backup_file_path($file_name);
     if (!file_exists($path) || !is_readable($path)) {
         return new WP_Error('file_missing', '备份文件不存在或不可读');
     }
@@ -235,7 +236,7 @@ function wp_starter_kit_dbm_restore_backup($file_name)
         return new WP_Error('invalid_backup', '备份文件格式无效');
     }
 
-    $allowed_tables = wp_starter_kit_dbm_allowed_tables();
+    $allowed_tables = xtools_dbm_allowed_tables();
     if (empty($allowed_tables)) {
         return new WP_Error('no_tables', '当前数据库未检测到可恢复数据表');
     }
@@ -283,10 +284,10 @@ function wp_starter_kit_dbm_restore_backup($file_name)
     return true;
 }
 
-add_action('wp_ajax_wp_starter_kit_db_manager', 'wp_starter_kit_db_manager_callback');
-function wp_starter_kit_db_manager_callback()
+add_action('wp_ajax_xtools_db_manager', 'xtools_db_manager_callback');
+function xtools_db_manager_callback()
 {
-    check_ajax_referer('wp_starter_kit_db_manager', 'nonce');
+    check_ajax_referer('xtools_db_manager', 'nonce');
 
     if (!current_user_can('manage_options')) {
         wp_send_json_error(array('message' => '权限不足'));
@@ -294,13 +295,13 @@ function wp_starter_kit_db_manager_callback()
 
     $op = sanitize_key($_POST['op'] ?? '');
     if ($op === 'tables') {
-        $tables = wp_starter_kit_dbm_allowed_tables();
+        $tables = xtools_dbm_allowed_tables();
         wp_send_json_success(array('tables' => array_values($tables)));
     }
 
     if ($op === 'rows') {
         global $wpdb;
-        $table = wp_starter_kit_dbm_validate_table($_POST['table'] ?? '');
+        $table = xtools_dbm_validate_table($_POST['table'] ?? '');
         if ($table === '') {
             wp_send_json_error(array('message' => '无效数据表'));
         }
@@ -319,7 +320,7 @@ function wp_starter_kit_db_manager_callback()
         }, (array) $columns_result);
 
         $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM `{$table}` LIMIT %d OFFSET %d", $per_page, $offset), ARRAY_A);
-        $pk = wp_starter_kit_dbm_get_primary_key($table);
+        $pk = xtools_dbm_get_primary_key($table);
 
         wp_send_json_success(array(
             'table' => $table,
@@ -339,19 +340,19 @@ function wp_starter_kit_db_manager_callback()
 
     if ($op === 'backup_list') {
         wp_send_json_success(array(
-            'backups' => wp_starter_kit_dbm_list_backups(),
+            'backups' => xtools_dbm_list_backups(),
         ));
     }
 
     if ($op === 'backup_create') {
-        $result = wp_starter_kit_dbm_create_backup();
+        $result = xtools_dbm_create_backup();
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));
         }
         wp_send_json_success(array(
             'message' => '备份创建成功',
             'backup' => $result,
-            'backups' => wp_starter_kit_dbm_list_backups(),
+            'backups' => xtools_dbm_list_backups(),
         ));
     }
 
@@ -361,19 +362,40 @@ function wp_starter_kit_db_manager_callback()
             wp_send_json_error(array('message' => '请选择备份文件'));
         }
 
-        $result = wp_starter_kit_dbm_restore_backup($file_name);
+        $result = xtools_dbm_restore_backup($file_name);
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));
         }
         wp_send_json_success(array(
             'message' => '数据库恢复成功',
-            'backups' => wp_starter_kit_dbm_list_backups(),
+            'backups' => xtools_dbm_list_backups(),
+        ));
+    }
+
+    if ($op === 'backup_delete') {
+        $file_name = sanitize_file_name($_POST['file_name'] ?? '');
+        if ($file_name === '') {
+            wp_send_json_error(array('message' => '请选择备份文件'));
+        }
+
+        $path = xtools_dbm_backup_file_path($file_name);
+        if (!file_exists($path)) {
+            wp_send_json_error(array('message' => '备份文件不存在'));
+        }
+
+        if (!@unlink($path)) {
+            wp_send_json_error(array('message' => '删除备份文件失败'));
+        }
+
+        wp_send_json_success(array(
+            'message' => '备份已删除',
+            'backups' => xtools_dbm_list_backups(),
         ));
     }
 
     if ($op === 'update') {
         global $wpdb;
-        $table = wp_starter_kit_dbm_validate_table($_POST['table'] ?? '');
+        $table = xtools_dbm_validate_table($_POST['table'] ?? '');
         if ($table === '') {
             wp_send_json_error(array('message' => '无效数据表'));
         }
